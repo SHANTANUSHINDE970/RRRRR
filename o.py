@@ -12,10 +12,9 @@ import secrets
 import string
 import os
 import traceback
-
 import ssl
-
-
+from email.utils import formataddr
+import socket
 
 # Page configuration
 st.set_page_config(
@@ -654,6 +653,8 @@ def add_debug_log(message, level="INFO"):
     # Keep only last 50 logs
     if len(st.session_state.debug_logs) > 50:
         st.session_state.debug_logs.pop(0)
+    # Print to console for debugging
+    print(f"[{level}] {message}")
 
 def log_debug(message):
     """Log debug messages"""
@@ -672,37 +673,60 @@ def generate_approval_password():
 def get_google_credentials():
     """Get Google credentials from Streamlit secrets"""
     try:
-        # Check if secrets exist
-        if 'GOOGLE_CREDENTIALS' not in st.secrets:
-            add_debug_log("GOOGLE_CREDENTIALS not found in secrets", "ERROR")
+        # Check if secrets exist - try both lowercase and uppercase
+        if 'google_credentials' in st.secrets:
+            log_debug("Found google_credentials (lowercase) in secrets")
+            secrets_key = "google_credentials"
+        elif 'GOOGLE_CREDENTIALS' in st.secrets:
+            log_debug("Found GOOGLE_CREDENTIALS (uppercase) in secrets")
+            secrets_key = "GOOGLE_CREDENTIALS"
+        else:
+            log_debug("Google credentials not found in secrets")
             st.error("❌ Google credentials not found in Streamlit secrets")
             return None
         
-        add_debug_log("Loading Google credentials from Streamlit secrets", "INFO")
+        log_debug(f"Loading Google credentials from {secrets_key}")
         
         # Access each field individually (more reliable in Streamlit Cloud)
-        creds_dict = {
-            "type": st.secrets["GOOGLE_CREDENTIALS"]["type"],
-            "project_id": st.secrets["GOOGLE_CREDENTIALS"]["project_id"],
-            "private_key_id": st.secrets["GOOGLE_CREDENTIALS"]["private_key_id"],
-            "private_key": st.secrets["GOOGLE_CREDENTIALS"]["private_key"],
-            "client_email": st.secrets["GOOGLE_CREDENTIALS"]["client_email"],
-            "client_id": st.secrets["GOOGLE_CREDENTIALS"]["client_id"],
-            "auth_uri": st.secrets["GOOGLE_CREDENTIALS"]["auth_uri"],
-            "token_uri": st.secrets["GOOGLE_CREDENTIALS"]["token_uri"],
-            "auth_provider_x509_cert_url": st.secrets["GOOGLE_CREDENTIALS"]["auth_provider_x509_cert_url"],
-            "client_x509_cert_url": st.secrets["GOOGLE_CREDENTIALS"]["client_x509_cert_url"]
-        }
+        try:
+            creds_dict = {
+                "type": st.secrets[secrets_key]["type"],
+                "project_id": st.secrets[secrets_key]["project_id"],
+                "private_key_id": st.secrets[secrets_key]["private_key_id"],
+                "private_key": st.secrets[secrets_key]["private_key"],
+                "client_email": st.secrets[secrets_key]["client_email"],
+                "client_id": st.secrets[secrets_key]["client_id"],
+                "auth_uri": st.secrets[secrets_key]["auth_uri"],
+                "token_uri": st.secrets[secrets_key]["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets[secrets_key]["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": st.secrets[secrets_key]["client_x509_cert_url"]
+            }
+        except KeyError as e:
+            log_debug(f"Missing key in {secrets_key}: {str(e)}")
+            st.error(f"❌ Missing credential field: {str(e)}")
+            return None
         
-        add_debug_log(f"Credentials loaded for: {creds_dict['client_email']}", "SUCCESS")
+        # Fix private key formatting if needed
+        private_key = creds_dict.get("private_key", "")
+        if private_key:
+            # Check if private key has escaped newlines
+            if "\\n" in private_key:
+                creds_dict["private_key"] = private_key.replace("\\n", "\n")
+                log_debug("Fixed escaped newlines in private key")
+            
+            # Ensure it has proper BEGIN/END headers
+            if not private_key.startswith("-----BEGIN PRIVATE KEY-----"):
+                # Try to add headers if missing
+                if "MII" in private_key[:50]:  # Looks like base64 encoded key
+                    creds_dict["private_key"] = f"-----BEGIN PRIVATE KEY-----\n{private_key}\n-----END PRIVATE KEY-----"
+                    log_debug("Added BEGIN/END headers to private key")
+        
+        log_debug(f"Credentials loaded for: {creds_dict['client_email']}")
+        
         return creds_dict
             
-    except KeyError as e:
-        add_debug_log(f"Missing key in GOOGLE_CREDENTIALS: {str(e)}", "ERROR")
-        st.error(f"❌ Missing credential field: {str(e)}")
-        return None
     except Exception as e:
-        add_debug_log(f"Error getting Google credentials: {traceback.format_exc()}", "ERROR")
+        log_debug(f"Error getting Google credentials: {traceback.format_exc()}")
         st.error(f"❌ Error loading credentials: {str(e)}")
         return None
 
@@ -726,8 +750,13 @@ def setup_google_sheets():
             st.error("❌ Google private key not found in credentials")
             return None
         
-        # Create credentials
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPES)
+        try:
+            # Create credentials
+            creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPES)
+            log_debug("Successfully created ServiceAccountCredentials")
+        except Exception as cred_error:
+            log_debug(f"Error creating credentials: {str(cred_error)}")
+            raise cred_error
         
         # Authorize client
         client = gspread.authorize(creds)
@@ -766,28 +795,58 @@ def setup_google_sheets():
     except Exception as e:
         error_msg = f"❌ Error in setup_google_sheets: {str(e)}"
         st.error(error_msg)
-        add_debug_log(f"setup_google_sheets error: {traceback.format_exc()}", "ERROR")
+        log_debug(f"setup_google_sheets error: {traceback.format_exc()}")
         return None
 
 def get_email_credentials():
-    """Get email credentials from Streamlit secrets"""
+    """Get email credentials from Streamlit secrets with better error handling"""
     try:
-        if 'EMAIL' not in st.secrets:
-            add_debug_log("EMAIL section not found in secrets", "ERROR")
-            return "", "", "Missing"
+        log_debug("Getting email credentials from secrets...")
         
-        sender_email = st.secrets["EMAIL"]["sender_email"]
-        sender_password = st.secrets["EMAIL"]["sender_password"]
+        # Try different possible secret names
+        possible_sections = ['EMAIL', 'email', 'gmail', 'GMAIL']
+        sender_email = None
+        sender_password = None
+        source = ""
         
-        add_debug_log(f"Email credentials loaded for: {sender_email}", "INFO")
-        return sender_email, sender_password, "Streamlit Secrets"
+        for section in possible_sections:
+            if section in st.secrets:
+                log_debug(f"Found email section: {section}")
+                try:
+                    sender_email = st.secrets[section].get("sender_email")
+                    sender_password = st.secrets[section].get("sender_password")
+                    if sender_email and sender_password:
+                        source = section
+                        break
+                except Exception as e:
+                    log_debug(f"Error reading {section} section: {str(e)}")
         
-    except KeyError as e:
-        add_debug_log(f"Missing email credential: {str(e)}", "ERROR")
-        return "", "", f"Missing: {str(e)}"
+        if not sender_email or not sender_password:
+            # Check environment variables as fallback
+            log_debug("Trying environment variables...")
+            sender_email = os.environ.get("EMAIL_SENDER", os.environ.get("SENDER_EMAIL"))
+            sender_password = os.environ.get("EMAIL_PASSWORD", os.environ.get("SENDER_PASSWORD"))
+            if sender_email and sender_password:
+                source = "Environment Variables"
+        
+        if sender_email and sender_password:
+            log_debug(f"Email credentials loaded for: {sender_email}")
+            log_debug(f"Password length: {len(sender_password)} characters")
+            
+            # Log password type for debugging
+            if len(sender_password) == 16:
+                log_debug("Password appears to be a Gmail App Password (16 chars)")
+            elif " " in sender_password:
+                log_debug("WARNING: Password contains spaces")
+            
+            return sender_email, sender_password, source
+        else:
+            log_debug("Email credentials not found in secrets or environment")
+            return "", "", "Not Found"
+            
     except Exception as e:
-        add_debug_log(f"Error getting email credentials: {str(e)}", "ERROR")
-        return "", "", "Error"
+        log_debug(f"Error getting email credentials: {str(e)}")
+        return "", "", f"Error: {str(e)}"
 
 def check_email_configuration():
     """Check if email is configured properly"""
@@ -797,7 +856,16 @@ def check_email_configuration():
         return {
             "configured": False,
             "message": "❌ Email credentials not found",
-            "details": f"Please check your {source} configuration",
+            "details": f"Please check your Streamlit secrets or environment variables",
+            "source": source
+        }
+    
+    # Check if email looks valid
+    if "@" not in sender_email or "." not in sender_email:
+        return {
+            "configured": False,
+            "message": "❌ Invalid email format",
+            "details": f"Email '{sender_email}' doesn't look valid",
             "source": source
         }
     
@@ -814,47 +882,81 @@ def check_email_configuration():
         "sender_email": sender_email,
         "source": source,
         "password_type": password_type,
+        "password_length": len(sender_password),
         "message": f"✅ Email credentials found ({password_type})"
     }
 
-def create_smtp_connection(sender_email, sender_password, method="auto"):
-    """Create and return SMTP connection with proper error handling"""
+def create_smtp_connection(sender_email, sender_password):
+    """Create and return SMTP connection with multiple fallback methods"""
+    server = None
+    connection_method = ""
+    error_messages = []
+    
+    # Method 1: SMTP_SSL (Port 465) - Primary method
     try:
-        add_debug_log(f"Attempting SMTP connection with method: {method}", "INFO")
-        
-        if method == "ssl" or method == "auto":
+        log_debug("Trying SMTP_SSL on port 465...")
+        context = ssl.create_default_context()
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10, context=context)
+        server.login(sender_email, sender_password)
+        connection_method = "SMTP_SSL (Port 465)"
+        log_debug(f"✓ {connection_method} successful")
+        return server, connection_method
+    except Exception as e1:
+        error_messages.append(f"Port 465 failed: {str(e1)}")
+        log_debug(f"Port 465 failed: {str(e1)}")
+        if server:
+            server.quit()
+    
+    # Method 2: STARTTLS (Port 587) - Secondary method
+    try:
+        log_debug("Trying STARTTLS on port 587...")
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
+        server.ehlo()
+        server.starttls(context=ssl.create_default_context())
+        server.ehlo()
+        server.login(sender_email, sender_password)
+        connection_method = "STARTTLS (Port 587)"
+        log_debug(f"✓ {connection_method} successful")
+        return server, connection_method
+    except Exception as e2:
+        error_messages.append(f"Port 587 failed: {str(e2)}")
+        log_debug(f"Port 587 failed: {str(e2)}")
+        if server:
             try:
-                # Method 1: SMTP_SSL (Port 465) - Most reliable for Gmail
-                add_debug_log("Trying SMTP_SSL on port 465...", "INFO")
-                context = ssl.create_default_context()
-                server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=30, context=context)
-                server.login(sender_email, sender_password)
-                add_debug_log("SMTP_SSL connection successful", "SUCCESS")
-                return server, "SMTP_SSL (Port 465)"
-            except Exception as e:
-                add_debug_log(f"SMTP_SSL failed: {str(e)}", "WARNING")
-        
-        if method == "starttls" or method == "auto":
-            try:
-                # Method 2: STARTTLS (Port 587) - Alternative
-                add_debug_log("Trying STARTTLS on port 587...", "INFO")
-                server = smtplib.SMTP('smtp.gmail.com', 587, timeout=30)
+                server.quit()
+            except:
+                pass
+    
+    # Method 3: Alternative ports
+    alternative_ports = [25, 2525]
+    for port in alternative_ports:
+        try:
+            log_debug(f"Trying port {port}...")
+            if port in [465]:
+                server = smtplib.SMTP_SSL('smtp.gmail.com', port, timeout=10)
+            else:
+                server = smtplib.SMTP('smtp.gmail.com', port, timeout=10)
                 server.starttls(context=ssl.create_default_context())
-                server.login(sender_email, sender_password)
-                add_debug_log("STARTTLS connection successful", "SUCCESS")
-                return server, "STARTTLS (Port 587)"
-            except Exception as e:
-                add_debug_log(f"STARTTLS failed: {str(e)}", "WARNING")
-        
-        return None, "All connection methods failed"
-        
-    except Exception as e:
-        add_debug_log(f"SMTP connection error: {str(e)}", "ERROR")
-        return None, str(e)
+            server.login(sender_email, sender_password)
+            connection_method = f"Port {port}"
+            log_debug(f"✓ {connection_method} successful")
+            return server, connection_method
+        except Exception as e:
+            error_messages.append(f"Port {port} failed: {str(e)}")
+            log_debug(f"Port {port} failed: {str(e)}")
+            if server:
+                try:
+                    server.quit()
+                except:
+                    pass
+    
+    log_debug("All SMTP connection methods failed")
+    return None, f"All methods failed: {' | '.join(error_messages)}"
 
 def test_email_connection(test_recipient=None):
     """Test email connection by sending a test email"""
     try:
+        log_debug("Starting email connection test...")
         sender_email, sender_password, source = get_email_credentials()
         
         if not sender_email or not sender_password:
@@ -864,15 +966,19 @@ def test_email_connection(test_recipient=None):
                 "details": "Please check your secrets.toml or environment variables",
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-            add_debug_log("Email test failed: No credentials", "ERROR")
+            log_debug("Email test failed: No credentials")
             return result
+        
+        log_debug(f"Sender: {sender_email}")
+        log_debug(f"Password source: {source}")
         
         # Use test recipient or sender's email for testing
         recipient = test_recipient or sender_email
+        log_debug(f"Recipient: {recipient}")
         
         # Create test message
         msg = MIMEMultipart()
-        msg['From'] = sender_email
+        msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
         msg['To'] = recipient
         msg['Subject'] = "📧 VOLAR FASHION - Email Configuration Test"
         
@@ -895,11 +1001,13 @@ def test_email_connection(test_recipient=None):
         msg.attach(MIMEText(body, 'plain'))
         
         # Try to create SMTP connection
+        log_debug("Attempting to establish SMTP connection...")
         server, method = create_smtp_connection(sender_email, sender_password)
         
         if server:
             try:
-                server.send_message(msg)
+                log_debug(f"Sending test email via {method}...")
+                server.sendmail(sender_email, recipient, msg.as_string())
                 server.quit()
                 result = {
                     "success": True,
@@ -909,55 +1017,91 @@ def test_email_connection(test_recipient=None):
                     "sender": sender_email,
                     "timestamp": test_time
                 }
-                add_debug_log(f"Test email sent successfully to {recipient}", "SUCCESS")
+                log_debug(f"Test email sent successfully to {recipient}")
                 return result
             except Exception as e:
                 server.quit()
-                add_debug_log(f"Error sending test email: {str(e)}", "ERROR")
-                raise e
+                error_msg = str(e)
+                log_debug(f"Error sending test email: {error_msg}")
+                
+                # Provide specific guidance based on error
+                if "535" in error_msg or "534" in error_msg:
+                    troubleshooting = """
+                    **Solution for Authentication Error:**
+                    1. Go to: https://myaccount.google.com/security
+                    2. Enable 2-Step Verification (if not already enabled)
+                    3. Go to: https://myaccount.google.com/apppasswords
+                    4. Generate an App Password for "Mail"
+                    5. Select "Other (Custom name)" and name it "Streamlit App"
+                    6. Copy the 16-character App Password
+                    7. Update your secrets.toml with this password
+                    """
+                else:
+                    troubleshooting = f"Error details: {error_msg}"
+                
+                result = {
+                    "success": False,
+                    "message": "❌ Failed to send email",
+                    "details": troubleshooting,
+                    "sender": sender_email,
+                    "timestamp": test_time
+                }
+                return result
         else:
-            error_msg = f"❌ Could not establish SMTP connection. Method tried: {method}"
+            error_details = f"SMTP Connection Failed: {method}"
+            log_debug(error_details)
             
-            # Check for specific authentication errors
-            if "535" in method or "534" in method:
-                error_msg = "❌ SMTP Authentication Error - App Password Required"
-                troubleshooting = """
-                **Solution:**
-                1. Go to: https://myaccount.google.com/security
-                2. Enable 2-Step Verification
-                3. Go to: https://myaccount.google.com/apppasswords
-                4. Generate an App Password for "Mail"
-                5. Use the 16-character App Password in secrets.toml
-                """
-            elif "Connection refused" in method or "timed out" in method:
-                error_msg = "❌ Network Connection Error"
-                troubleshooting = "Check if Streamlit Cloud allows outgoing SMTP connections"
-            else:
-                troubleshooting = "Please check your email credentials and try again"
+            troubleshooting = """
+            **Common Solutions:**
+            1. Ensure you're using an App Password (not your regular Gmail password)
+            2. Enable 2-Step Verification on your Google account
+            3. Check if your account has "Less Secure Apps" access enabled
+            4. Try generating a new App Password
+            5. Check your internet connection
+            
+            **App Password Creation Steps:**
+            1. Visit: https://myaccount.google.com/security
+            2. Enable 2-Step Verification
+            3. Visit: https://myaccount.google.com/apppasswords
+            4. Select "Mail" and "Other (Custom name)"
+            5. Name it "VOLAR Streamlit App"
+            6. Generate and copy the 16-character password
+            """
             
             result = {
                 "success": False,
-                "message": error_msg,
+                "message": "❌ SMTP Connection Failed",
                 "details": f"{troubleshooting}\n\nError: {method}",
                 "sender": sender_email,
                 "timestamp": test_time
             }
-            add_debug_log(f"Test email failed: {method}", "ERROR")
             return result
         
     except smtplib.SMTPAuthenticationError as e:
         error_msg = str(e)
+        log_debug(f"SMTP Authentication Error: {error_msg}")
         result = {
             "success": False,
             "message": "❌ SMTP Authentication Failed",
-            "details": f"Error: {error_msg}\n\n**Solution:** Use an App Password (not your regular Gmail password). Enable 2-Step Verification first.",
+            "details": f"Error: {error_msg}\n\n**Solution:** Use an App Password (16 chars), not your regular password. Enable 2-Step Verification first.",
             "sender": sender_email,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        add_debug_log(f"SMTP Authentication Error: {error_msg}", "ERROR")
+        return result
+    except socket.timeout as e:
+        error_msg = "Connection timeout - check your internet connection"
+        log_debug(f"Connection timeout: {str(e)}")
+        result = {
+            "success": False,
+            "message": "❌ Connection Timeout",
+            "details": error_msg,
+            "sender": sender_email,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
         return result
     except Exception as e:
         error_msg = str(e)
+        log_debug(f"Unexpected error in test_email_connection: {traceback.format_exc()}")
         result = {
             "success": False,
             "message": "❌ Unexpected Error",
@@ -965,7 +1109,6 @@ def test_email_connection(test_recipient=None):
             "sender": sender_email,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        add_debug_log(f"Unexpected error in test_email_connection: {traceback.format_exc()}", "ERROR")
         return result
 
 def calculate_days(from_date, till_date, leave_type):
@@ -981,18 +1124,20 @@ def calculate_days(from_date, till_date, leave_type):
 def send_approval_email(employee_name, superior_name, superior_email, leave_details, approval_password):
     """Send approval request email to superior"""
     try:
+        log_debug(f"Preparing to send approval email to {superior_email}")
+        
         # Get email credentials
         sender_email, sender_password, source = get_email_credentials()
         
         if not sender_email or not sender_password:
             st.warning("⚠️ Email credentials not configured")
-            add_debug_log("Email credentials missing", "WARNING")
+            log_debug("Email credentials missing")
             return False
             
         # Check if it's a valid email
         if "@" not in superior_email or "." not in superior_email:
             st.warning(f"⚠️ Invalid email format: {superior_email}")
-            add_debug_log(f"Invalid email format: {superior_email}", "WARNING")
+            log_debug(f"Invalid email format: {superior_email}")
             return False
         
         # Get app URL
@@ -1001,13 +1146,15 @@ def send_approval_email(employee_name, superior_name, superior_email, leave_deta
         except:
             app_url = "https://hr-application-rtundoncudkzt9efwnscey.streamlit.app/"
         
+        log_debug(f"Using app URL: {app_url}")
+        
         # Create email message
         msg = MIMEMultipart('alternative')
-        msg['From'] = f"VOLAR FASHION HR <{sender_email}>"
+        msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
         msg['To'] = superior_email
         msg['Subject'] = f"Leave Approval Required: {employee_name}"
         
-        # Simple HTML email body
+        # Simple HTML email body - USING YOUR PREFERRED EMAIL UI
         html_body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -1055,24 +1202,32 @@ def send_approval_email(employee_name, superior_name, superior_email, leave_deta
         msg.attach(MIMEText(html_body, 'html'))
         
         # Create SMTP connection
+        log_debug(f"Creating SMTP connection for approval email to {superior_email}")
         server, method = create_smtp_connection(sender_email, sender_password)
         
         if server:
             try:
-                server.send_message(msg)
+                log_debug(f"Sending approval email via {method}...")
+                server.sendmail(sender_email, superior_email, msg.as_string())
                 server.quit()
-                add_debug_log(f"Approval email sent to {superior_email} via {method}", "SUCCESS")
+                log_debug(f"✓ Approval email sent to {superior_email} via {method}")
                 return True
             except Exception as e:
                 server.quit()
-                add_debug_log(f"Failed to send approval email: {str(e)}", "ERROR")
+                error_msg = str(e)
+                log_debug(f"Failed to send approval email: {error_msg}")
+                st.error(f"❌ Failed to send email: {error_msg}")
                 return False
         else:
-            add_debug_log(f"Could not establish SMTP connection for approval email", "ERROR")
+            error_msg = f"Could not establish SMTP connection: {method}"
+            log_debug(error_msg)
+            st.error(f"❌ {error_msg}")
             return False
             
     except Exception as e:
-        add_debug_log(f"Error in send_approval_email: {traceback.format_exc()}", "ERROR")
+        error_msg = str(e)
+        log_debug(f"Error in send_approval_email: {traceback.format_exc()}")
+        st.error(f"❌ Email sending error: {error_msg}")
         return False
 
 def update_leave_status(sheet, superior_email, approval_password, status):
@@ -1088,15 +1243,15 @@ def update_leave_status(sheet, superior_email, approval_password, status):
                 sheet.update_cell(idx + 1, 12, status)  # Status column
                 sheet.update_cell(idx + 1, 13, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date
                 sheet.update_cell(idx + 1, 14, "USED")  # Mark password as used
-                add_debug_log(f"Updated row {idx + 1} to status: {status}", "INFO")
+                log_debug(f"Updated row {idx + 1} to status: {status}")
                 return True
         
-        add_debug_log("No matching record found for approval", "WARNING")
+        log_debug("No matching record found for approval")
         return False
         
     except Exception as e:
         st.error(f"❌ Error updating status: {str(e)}")
-        add_debug_log(f"Update error: {traceback.format_exc()}", "ERROR")
+        log_debug(f"Update error: {traceback.format_exc()}")
         return False
 
 # JavaScript for copying to clipboard
@@ -1135,6 +1290,8 @@ if email_config["configured"]:
     st.sidebar.info(f"**Sender:** {email_config['sender_email']}")
     if 'password_type' in email_config:
         st.sidebar.info(f"**Password Type:** {email_config['password_type']}")
+    if 'password_length' in email_config:
+        st.sidebar.info(f"**Password Length:** {email_config['password_length']} chars")
     st.sidebar.info(f"**Source:** {email_config['source']}")
 else:
     st.sidebar.error(email_config["message"])
@@ -1174,8 +1331,10 @@ with col1:
             
             if result["success"]:
                 st.session_state.email_config_status = "Working"
+                st.sidebar.success("✅ Test email sent successfully!")
             else:
                 st.session_state.email_config_status = "Failed"
+                st.sidebar.error("❌ Test email failed")
 
 with col2:
     if st.button("🔄 Clear Logs", key="clear_logs", use_container_width=True):
@@ -1504,7 +1663,7 @@ with tab1:
                             
                             # Write to Google Sheets
                             sheet.append_row(row_data)
-                            add_debug_log(f"Data written to Google Sheets for {employee_name}", "SUCCESS")
+                            log_debug(f"Data written to Google Sheets for {employee_name}")
                             
                             # Try to send email only if configuration is working
                             email_sent = False
@@ -1523,7 +1682,7 @@ with tab1:
                                         email_error = "Email sending failed - check debug logs"
                                 except Exception as e:
                                     email_error = f"Email exception: {str(e)}"
-                                    add_debug_log(f"Email exception: {traceback.format_exc()}", "ERROR")
+                                    log_debug(f"Email exception: {traceback.format_exc()}")
                             
                             if email_sent:
                                 st.markdown('''
@@ -1631,7 +1790,7 @@ with tab1:
                                     </div>
                                 </div>
                             ''', unsafe_allow_html=True)
-                            add_debug_log(f"Submission error: {traceback.format_exc()}", "ERROR")
+                            log_debug(f"Submission error: {traceback.format_exc()}")
                     else:
                         st.markdown('''
                             <div class="error-message">
