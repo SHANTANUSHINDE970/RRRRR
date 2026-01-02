@@ -24,30 +24,113 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Beautiful Elegant CSS with Premium Design
+# Beautiful Elegant CSS with Premium Design - DARK MODE COMPATIBLE
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap');
     
+    /* CSS Variables for Theme Switching */
+    :root {
+        --primary-color: #673ab7;
+        --secondary-color: #9c27b0;
+        --accent-color: #2196f3;
+        --success-color: #28a745;
+        --warning-color: #ff9800;
+        --danger-color: #dc3545;
+        --text-primary: #1a1a1a;
+        --text-secondary: #4a5568;
+        --text-light: #718096;
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8f9ff;
+        --bg-tertiary: #f5f7fa;
+        --border-color: #e2e8f0;
+        --card-bg: #ffffff;
+        --input-bg: #fafbfc;
+        --shadow-color: rgba(103, 58, 183, 0.08);
+    }
+    
+    /* Dark Theme Variables */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --primary-color: #9c6bff;
+            --secondary-color: #d179ff;
+            --accent-color: #64b5f6;
+            --success-color: #4caf50;
+            --warning-color: #ffb74d;
+            --danger-color: #f44336;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e0;
+            --text-light: #a0aec0;
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --bg-tertiary: #4a5568;
+            --border-color: #4a5568;
+            --card-bg: #2d3748;
+            --input-bg: #4a5568;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+        }
+    }
+    
+    /* Streamlit Dark Mode Override */
+    @media (prefers-color-scheme: dark) {
+        .stApp {
+            background-color: var(--bg-primary) !important;
+        }
+        
+        .main {
+            background-color: var(--bg-primary) !important;
+        }
+        
+        /* Ensure form text is visible */
+        .stTextInput input,
+        .stSelectbox select,
+        .stTextArea textarea,
+        .stDateInput input,
+        .stNumberInput input {
+            color: var(--text-primary) !important;
+            background-color: var(--input-bg) !important;
+            border-color: var(--border-color) !important;
+        }
+        
+        /* Labels should be visible */
+        .stTextInput label,
+        .stSelectbox label,
+        .stTextArea label,
+        .stDateInput label,
+        .stNumberInput label {
+            color: var(--text-secondary) !important;
+        }
+        
+        /* Placeholder text */
+        .stTextInput input::placeholder,
+        .stSelectbox select::placeholder,
+        .stTextArea textarea::placeholder,
+        .stDateInput input::placeholder {
+            color: var(--text-light) !important;
+            opacity: 0.7;
+        }
+    }
+    
     * {
         font-family: 'Inter', sans-serif;
+        color: var(--text-primary);
     }
     
     .main {
-        background: linear-gradient(135deg, #f8f9ff 0%, #f5f7fa 100%);
+        background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
         min-height: 100vh;
     }
     
     .stApp {
-        background: linear-gradient(135deg, #f8f9ff 0%, #f5f7fa 100%);
+        background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
         background-attachment: fixed;
     }
     
     .form-container {
-        background: white;
+        background: var(--card-bg);
         padding: 3.5rem;
         border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(103, 58, 183, 0.08);
+        box-shadow: 0 20px 60px var(--shadow-color);
         margin: 2rem auto;
         max-width: 1000px;
         border: 1px solid rgba(103, 58, 183, 0.1);
@@ -62,11 +145,11 @@ st.markdown("""
         left: 0;
         right: 0;
         height: 4px;
-        background: linear-gradient(90deg, #673ab7, #9c27b0, #2196f3);
+        background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--accent-color));
     }
     
     h1 {
-        background: linear-gradient(135deg, #673ab7 0%, #2196f3 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
@@ -78,7 +161,7 @@ st.markdown("""
     }
     
     h2 {
-        color: #5a6c7d;
+        color: var(--text-light);
         text-align: center;
         font-size: 1.6rem;
         margin-bottom: 3rem;
@@ -88,7 +171,7 @@ st.markdown("""
     }
     
     h3 {
-        color: #4a5568;
+        color: var(--text-secondary);
         font-size: 1.4rem;
         margin-top: 2.5rem;
         margin-bottom: 1.5rem;
@@ -104,12 +187,12 @@ st.markdown("""
         left: 0;
         width: 60px;
         height: 3px;
-        background: linear-gradient(90deg, #673ab7, #9c27b0);
+        background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
         border-radius: 2px;
     }
     
     .stButton>button {
-        background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         color: white;
         border: none;
         padding: 1rem 3rem;
@@ -158,27 +241,85 @@ st.markdown("""
         box-shadow: 0 12px 35px rgba(103, 58, 183, 0.35);
     }
     
-    .stTextInput>div>div>input, .stSelectbox>div>div>select, 
-    .stTextArea>div>div>textarea, .stDateInput>div>div>input {
+    /* FORM ELEMENTS - DARK MODE COMPATIBLE */
+    .stTextInput>div>div>input {
+        color: var(--text-primary) !important;
+        background-color: var(--input-bg) !important;
+        border: 2px solid var(--border-color) !important;
         border-radius: 12px;
-        border: 2px solid #e2e8f0;
-        padding: 0.875rem 1rem;
+        padding: 0.875rem 1rem !important;
         font-size: 1rem;
         transition: all 0.3s ease;
-        background: #fafbfc;
     }
     
-    .stTextInput>div>div>input:focus, .stSelectbox>div>div>select:focus, 
-    .stTextArea>div>div>textarea:focus, .stDateInput>div>div>input:focus {
-        border-color: #673ab7;
-        box-shadow: 0 0 0 4px rgba(103, 58, 183, 0.1);
-        background: white;
-        outline: none;
+    .stSelectbox>div>div>select {
+        color: var(--text-primary) !important;
+        background-color: var(--input-bg) !important;
+        border: 2px solid var(--border-color) !important;
+        border-radius: 12px;
+        padding: 0.875rem 1rem !important;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stTextArea>div>div>textarea {
+        color: var(--text-primary) !important;
+        background-color: var(--input-bg) !important;
+        border: 2px solid var(--border-color) !important;
+        border-radius: 12px;
+        padding: 0.875rem 1rem !important;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stDateInput>div>div>input {
+        color: var(--text-primary) !important;
+        background-color: var(--input-bg) !important;
+        border: 2px solid var(--border-color) !important;
+        border-radius: 12px;
+        padding: 0.875rem 1rem !important;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    /* Focus states */
+    .stTextInput>div>div>input:focus,
+    .stSelectbox>div>div>select:focus,
+    .stTextArea>div>div>textarea:focus,
+    .stDateInput>div>div>input:focus {
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 4px rgba(103, 58, 183, 0.1) !important;
+        background: var(--card-bg) !important;
+        outline: none !important;
+    }
+    
+    /* Labels */
+    .stTextInput>div>label,
+    .stSelectbox>div>label,
+    .stTextArea>div>label,
+    .stDateInput>div>label {
+        color: var(--text-secondary) !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Placeholder text for dark mode */
+    @media (prefers-color-scheme: dark) {
+        .stTextInput input::placeholder,
+        .stSelectbox select::placeholder,
+        .stTextArea textarea::placeholder,
+        .stDateInput input::placeholder {
+            color: var(--text-light) !important;
+        }
+    }
+    
+    /* Make sure all text elements use CSS variables */
+    p, span, div, li {
+        color: var(--text-primary);
     }
     
     .success-message {
         background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        border-left: 4px solid #28a745;
+        border-left: 4px solid var(--success-color);
         color: #155724;
         padding: 1.75rem;
         border-radius: 16px;
@@ -202,7 +343,7 @@ st.markdown("""
     
     .error-message {
         background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        border-left: 4px solid #dc3545;
+        border-left: 4px solid var(--danger-color);
         color: #721c24;
         padding: 1.75rem;
         border-radius: 16px;
@@ -221,7 +362,7 @@ st.markdown("""
     
     .info-box {
         background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-        border-left: 4px solid #2196f3;
+        border-left: 4px solid var(--accent-color);
         color: #0d47a1;
         padding: 1.75rem;
         border-radius: 16px;
@@ -250,12 +391,12 @@ st.markdown("""
     }
     
     .approval-card {
-        background: white;
+        background: var(--card-bg);
         padding: 2rem;
         border-radius: 20px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.05);
         margin: 1rem 0;
-        border: 1px solid rgba(0,0,0,0.05);
+        border: 1px solid var(--border-color);
     }
     
     .status-pending {
@@ -290,21 +431,15 @@ st.markdown("""
     
     label {
         font-weight: 600 !important;
-        color: #4a5568 !important;
+        color: var(--text-secondary) !important;
         font-size: 0.95rem !important;
         margin-bottom: 0.5rem !important;
         display: block;
     }
     
-    .stTextInput>div>label, .stSelectbox>div>label, 
-    .stTextArea>div>label, .stDateInput>div>label {
-        color: #4a5568 !important;
-        font-weight: 600 !important;
-    }
-    
     .footer {
         text-align: center;
-        color: #718096;
+        color: var(--text-light);
         padding: 3rem 2rem;
         margin-top: 4rem;
         position: relative;
@@ -318,7 +453,7 @@ st.markdown("""
         transform: translateX(-50%);
         width: 200px;
         height: 2px;
-        background: linear-gradient(90deg, transparent, #673ab7, transparent);
+        background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
     }
     
     /* Hide Streamlit branding */
@@ -328,7 +463,7 @@ st.markdown("""
     
     .stTabs [data-baseweb="tab-list"] {
         gap: 12px;
-        background: white;
+        background: var(--card-bg);
         padding: 12px;
         border-radius: 16px;
         border: 1px solid rgba(103, 58, 183, 0.1);
@@ -336,19 +471,19 @@ st.markdown("""
     }
     
     .stTabs [data-baseweb="tab"] {
-        background: white;
+        background: var(--card-bg);
         border-radius: 12px;
-        color: #718096;
+        color: var(--text-light);
         font-weight: 500;
         padding: 12px 28px;
-        border: 1px solid rgba(0,0,0,0.05);
+        border: 1px solid var(--border-color);
         transition: all 0.3s ease;
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         color: white;
-        border-color: #673ab7;
+        border-color: var(--primary-color);
         box-shadow: 0 4px 12px rgba(103, 58, 183, 0.2);
     }
     
@@ -361,14 +496,14 @@ st.markdown("""
         font-family: 'Courier New', monospace;
         letter-spacing: 2px;
         font-weight: 600;
-        color: #673ab7;
+        color: var(--primary-color);
     }
     
     .company-header {
         text-align: center;
         margin-bottom: 3rem;
         padding: 2rem;
-        background: white;
+        background: var(--card-bg);
         border-radius: 24px;
         box-shadow: 0 15px 40px rgba(103, 58, 183, 0.08);
         border: 1px solid rgba(103, 58, 183, 0.1);
@@ -383,7 +518,7 @@ st.markdown("""
         left: 0;
         right: 0;
         height: 4px;
-        background: linear-gradient(90deg, #673ab7, #9c27b0, #2196f3);
+        background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--accent-color));
     }
     
     .glass-effect {
@@ -393,7 +528,7 @@ st.markdown("""
     }
     
     .gradient-text {
-        background: linear-gradient(135deg, #673ab7 0%, #2196f3 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -406,7 +541,7 @@ st.markdown("""
         width: 40px;
         height: 40px;
         border-radius: 12px;
-        background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         color: white;
         margin-right: 12px;
         font-size: 1.2rem;
@@ -417,7 +552,7 @@ st.markdown("""
         align-items: center;
         margin-bottom: 2rem;
         padding-bottom: 1rem;
-        border-bottom: 2px solid #f1f5f9;
+        border-bottom: 2px solid var(--border-color);
     }
     
     .floating-element {
@@ -449,12 +584,12 @@ st.markdown("""
     }
     
     ::-webkit-scrollbar-track {
-        background: #f1f5f9;
+        background: var(--bg-tertiary);
         border-radius: 4px;
     }
     
     ::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         border-radius: 4px;
     }
     
@@ -466,7 +601,7 @@ st.markdown("""
         position: fixed;
         width: 10px;
         height: 10px;
-        background: #673ab7;
+        background: var(--primary-color);
         opacity: 0;
     }
     
@@ -478,8 +613,8 @@ st.markdown("""
     .tooltip .tooltiptext {
         visibility: hidden;
         width: 200px;
-        background-color: #333;
-        color: #fff;
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
         text-align: center;
         border-radius: 6px;
         padding: 8px;
@@ -491,6 +626,7 @@ st.markdown("""
         opacity: 0;
         transition: opacity 0.3s;
         font-size: 0.9rem;
+        border: 1px solid var(--border-color);
     }
     
     .tooltip:hover .tooltiptext {
@@ -501,7 +637,7 @@ st.markdown("""
     .feature-icon {
         font-size: 2.5rem;
         margin-bottom: 1rem;
-        background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
@@ -546,23 +682,25 @@ st.markdown("""
     
     /* Test email styles */
     .test-email-container {
-        background: white;
+        background: var(--card-bg);
         padding: 1.5rem;
         border-radius: 12px;
-        border: 2px solid #e0e0e0;
+        border: 2px solid var(--border-color);
         margin: 1rem 0;
     }
     
     .test-email-input {
         width: 100%;
         padding: 10px;
-        border: 1px solid #ddd;
+        border: 1px solid var(--border-color);
         border-radius: 6px;
         margin: 10px 0;
+        background: var(--input-bg);
+        color: var(--text-primary);
     }
     
     .test-email-btn {
-        background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);
+        background: linear-gradient(135deg, var(--accent-color) 0%, #03a9f4 100%);
         color: white;
         border: none;
         padding: 10px 20px;
@@ -578,7 +716,7 @@ st.markdown("""
         padding: 10px;
         border-radius: 6px;
         margin: 10px 0;
-        border-left: 4px solid #28a745;
+        border-left: 4px solid var(--success-color);
     }
     
     .test-result-error {
@@ -587,12 +725,12 @@ st.markdown("""
         padding: 10px;
         border-radius: 6px;
         margin: 10px 0;
-        border-left: 4px solid #dc3545;
+        border-left: 4px solid var(--danger-color);
     }
     
     .debug-log {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
         border-radius: 6px;
         padding: 10px;
         margin: 10px 0;
@@ -600,6 +738,29 @@ st.markdown("""
         font-size: 12px;
         max-height: 200px;
         overflow-y: auto;
+    }
+    
+    /* Ensure text in all containers is visible */
+    div[data-testid="stText"],
+    div[data-testid="stMarkdown"] {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Sidebar specific styles for dark mode */
+    @media (prefers-color-scheme: dark) {
+        section[data-testid="stSidebar"] {
+            background-color: var(--bg-secondary) !important;
+        }
+        
+        section[data-testid="stSidebar"] * {
+            color: var(--text-primary) !important;
+        }
+        
+        section[data-testid="stSidebar"] .stTextInput input,
+        section[data-testid="stSidebar"] .stButton button {
+            color: var(--text-primary) !important;
+            background-color: var(--input-bg) !important;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -1573,21 +1734,7 @@ with tab1:
     )
     
     # Information Box
-    st.markdown("""
-        <div class="info-box">
-            <div style="display: flex; align-items: flex-start;">
-                <div style="font-size: 1.5rem; margin-right: 15px;">ℹ️</div>
-                <div>
-                    <strong style="display: block; margin-bottom: 8px;">Important Guidelines</strong>
-                    • All fields are required for submission<br>
-                    • Your manager will receive a secure approval code via email<br>
-                    • Approval decisions are typically made within 24 hours<br>
-                    • You'll be notified once a decision is made<br>
-                    • For urgent requests, please contact your manager directly
-                </div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+
     
     # Submit Button with Beautiful Design
     submit_col1, submit_col2, submit_col3 = st.columns([1, 2, 1])
