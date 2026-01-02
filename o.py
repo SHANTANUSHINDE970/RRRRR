@@ -1143,7 +1143,7 @@ def send_approval_email(employee_name, superior_name, superior_email, leave_deta
         try:
             app_url = st.secrets["APP_URL"]
         except:
-            app_url = "https://hr-application-rtundoncudkzt9efwnscey.streamlit.app/"
+            app_url = "https://9yq6u8fklhfba8uggnjr7h.streamlit.app/"
         
         log_debug(f"Using app URL: {app_url}")
         
