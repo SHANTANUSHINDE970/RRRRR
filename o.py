@@ -628,7 +628,6 @@ DEPARTMENTS = [
     "Ecom",
     "Graphic Design",
     "Sales and Marketing",
-    "Quality Control",
     "IT",
     "Administration"
 ]
