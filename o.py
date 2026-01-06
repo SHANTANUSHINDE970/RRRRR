@@ -779,7 +779,6 @@ st.markdown("""
 SUPERIORS = {
     "Shantanu Shinde": "s37@vfemails.com",
     "Ayushi Jain": "ayushi@volarfashion.in",
-    "Sandip Sir": "sandip@ragunited.com",
     "Akshaya Shinde": "Akshaya@vfemails.com",
     "Vitika Mehta": "vitika@vfemails.com",
     "Manish Gupta": "Manish@vfemails.com",
