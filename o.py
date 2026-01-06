@@ -1796,7 +1796,7 @@ with tab1:
     
     # Manager Selection
     superior_name = st.selectbox(
-        "👔 Reporting Manager",
+        "👔 Reporting Manager or Team Leader",
         ["Select Manager"] + list(SUPERIORS.keys()),
         index=0 if st.session_state.form_data_tab1['superior_name'] == 'Select Manager' else list(["Select Manager"] + list(SUPERIORS.keys())).index(st.session_state.form_data_tab1['superior_name']),
         help="Select your direct reporting manager",
@@ -2030,7 +2030,7 @@ with tab2:
         <div class="section-header">
             <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">✅</div>
             <div>
-                <h3 style="margin: 0;">Manager Approval Portal</h3>
+                <h3 style="margin: 0;">Manager or Team Leader Approval Portal</h3>
                 <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
                     Securely approve or reject leave requests using the approval code
                 </p>
