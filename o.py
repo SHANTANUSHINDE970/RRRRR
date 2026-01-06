@@ -777,19 +777,19 @@ st.markdown("""
 
 # Superior details dictionary
 SUPERIORS = {
-    "Shantanu": "s37@vfemails.com",
-    "Ayushi": "ayushi@volarfashion.in",
+    "Shantanu Shinde": "s37@vfemails.com",
+    "Ayushi Jain": "ayushi@volarfashion.in",
     "Sandip Sir": "sandip@ragunited.com",
-    "Akshaya": "Akshaya@vfemails.com",
-    "Vitika": "vitika@vfemails.com",
-    "MANISH": "Manish@vfemails.com",
-    "TAHIR": "tahir@vfemails.com",
-    "Tariq": "dn1@volarfashion.in",
+    "Akshaya Shinde": "Akshaya@vfemails.com",
+    "Vitika Mehta": "vitika@vfemails.com",
+    "Manish Gupta": "Manish@vfemails.com",
+    "Tahir Siddiqui": "tahir@vfemails.com",
+    "Tariq Patel": "dn1@volarfashion.in",
     "HR": "hrvolarfashion@gmail.com",
-    "Rajeev": "Rajeev@vfemails.com",
-    "Krishna": "Krishna@vfemails.com",
-    "Sarath": "Sarath@vfemails.com",
-    "Demo": "Shinde78617@gmail.com"
+    "Rajeev Thakur": "Rajeev@vfemails.com",
+    "Krishna Yadav": "Krishna@vfemails.com",
+    "Sarath Kumar": "Sarath@vfemails.com",
+    
 }
 
 # Department options
