@@ -804,12 +804,26 @@ DEPARTMENTS = [
 ]
 
 # Initialize session state for form reset
-if 'form_submitted' not in st.session_state:
-    st.session_state.form_submitted = False
-if 'approval_submitted' not in st.session_state:
-    st.session_state.approval_submitted = False
-if 'reset_forms' not in st.session_state:
-    st.session_state.reset_forms = False
+if 'reset_form_tab1' not in st.session_state:
+    st.session_state.reset_form_tab1 = False
+if 'reset_form_tab2' not in st.session_state:
+    st.session_state.reset_form_tab2 = False
+if 'form_data_tab1' not in st.session_state:
+    st.session_state.form_data_tab1 = {
+        'employee_name': '',
+        'employee_code': '',
+        'department': 'Select Department',
+        'leave_type': 'Select Type',
+        'from_date': datetime.now().date(),
+        'till_date': datetime.now().date(),
+        'purpose': '',
+        'superior_name': 'Select Manager'
+    }
+if 'form_data_tab2' not in st.session_state:
+    st.session_state.form_data_tab2 = {
+        'approval_password': '',
+        'action': 'Select Decision'
+    }
 if 'approval_code_to_copy' not in st.session_state:
     st.session_state.approval_code_to_copy = ""
 if 'show_copy_section' not in st.session_state:
@@ -1350,8 +1364,6 @@ def send_approval_email(employee_name, superior_name, superior_email, leave_deta
                     <p><strong>Purpose:</strong> {leave_details['purpose']}</p>
                 </div>
                 
-
-                
                 <div style="margin: 30px 0;">
                     <p><strong>How to Approve/Reject:</strong></p>
                     <ol>
@@ -1587,10 +1599,6 @@ with st.sidebar.expander("📖 Email Setup Guide"):
     - ❌ Network issues → Wait and retry
     """)
 
-# Email Status in Session State
-if 'email_tested' not in st.session_state:
-    st.session_state.email_tested = False
-
 # ============================================
 # MAIN APPLICATION
 # ============================================
@@ -1607,11 +1615,6 @@ st.markdown("""
 tab1, tab2 = st.tabs(["📝 Submit Leave Application", "✅ Approval Portal"])
 
 with tab1:
-    # Check if we need to reset the form
-    if st.session_state.reset_forms:
-        st.session_state.reset_forms = False
-        st.rerun()
-    
     # Email status warning at top of form
     if not email_config["configured"] or st.session_state.email_config_status == "Failed":
         st.markdown(f'''
@@ -1660,41 +1663,84 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
     
+    # Reset form if flag is set
+    if st.session_state.reset_form_tab1:
+        st.session_state.form_data_tab1 = {
+            'employee_name': '',
+            'employee_code': '',
+            'department': 'Select Department',
+            'leave_type': 'Select Type',
+            'from_date': datetime.now().date(),
+            'till_date': datetime.now().date(),
+            'purpose': '',
+            'superior_name': 'Select Manager'
+        }
+        st.session_state.reset_form_tab1 = False
+    
     # Two-column layout
     col1, col2 = st.columns([1, 1], gap="large")
     
     with col1:
         employee_name = st.text_input(
             "👤 Full Name",
+            value=st.session_state.form_data_tab1['employee_name'],
             placeholder="Enter your full name",
-            help="Please enter your complete name as per company records"
+            help="Please enter your complete name as per company records",
+            key="employee_name_input"
         )
         employee_code = st.text_input(
             "🔢 Employee ID",
+            value=st.session_state.form_data_tab1['employee_code'],
             placeholder="e.g., VF-EMP-001",
-            help="Your unique employee identification code"
+            help="Your unique employee identification code",
+            key="employee_code_input"
         )
         department = st.selectbox(
             "🏛️ Department",
             ["Select Department"] + DEPARTMENTS,
-            help="Select your department from the list"
+            index=0 if st.session_state.form_data_tab1['department'] == 'Select Department' else DEPARTMENTS.index(st.session_state.form_data_tab1['department']) + 1,
+            help="Select your department from the list",
+            key="department_select"
         )
     
     with col2:
         leave_type = st.selectbox(
             "📋 Leave Type",
             ["Select Type", "Full Day", "Half Day", "Early Exit"],
-            help="Select the type of leave you are requesting"
+            index=0 if st.session_state.form_data_tab1['leave_type'] == 'Select Type' else ["Select Type", "Full Day", "Half Day", "Early Exit"].index(st.session_state.form_data_tab1['leave_type']),
+            help="Select the type of leave you are requesting",
+            key="leave_type_select"
         )
+        
+        # Get date values with fallback
+        from_date_value = st.session_state.form_data_tab1['from_date']
+        if isinstance(from_date_value, str):
+            try:
+                from_date_value = datetime.strptime(from_date_value, "%Y-%m-%d").date()
+            except:
+                from_date_value = datetime.now().date()
+        
         from_date = st.date_input(
             "📅 Start Date",
+            value=from_date_value,
             min_value=datetime.now().date(),
-            help="Select the first day of your leave"
+            help="Select the first day of your leave",
+            key="from_date_input"
         )
+        
+        till_date_value = st.session_state.form_data_tab1['till_date']
+        if isinstance(till_date_value, str):
+            try:
+                till_date_value = datetime.strptime(till_date_value, "%Y-%m-%d").date()
+            except:
+                till_date_value = datetime.now().date()
+        
         till_date = st.date_input(
             "📅 End Date",
+            value=till_date_value,
             min_value=datetime.now().date(),
-            help="Select the last day of your leave"
+            help="Select the last day of your leave",
+            key="till_date_input"
         )
     
     # Duration Card with Animation
@@ -1741,22 +1787,28 @@ with tab1:
     
     purpose = st.text_area(
         "Purpose of Leave",
+        value=st.session_state.form_data_tab1['purpose'],
         placeholder="Please provide a clear and detailed explanation for your leave request...",
         height=120,
-        help="Be specific about the reason for your leave"
+        help="Be specific about the reason for your leave",
+        key="purpose_textarea"
     )
     
     # Manager Selection
     superior_name = st.selectbox(
         "👔 Reporting Manager",
         ["Select Manager"] + list(SUPERIORS.keys()),
-        help="Select your direct reporting manager"
+        index=0 if st.session_state.form_data_tab1['superior_name'] == 'Select Manager' else list(["Select Manager"] + list(SUPERIORS.keys())).index(st.session_state.form_data_tab1['superior_name']),
+        help="Select your direct reporting manager",
+        key="superior_select"
     )
     
     # Submit Button with Beautiful Design
     submit_col1, submit_col2, submit_col3 = st.columns([1, 2, 1])
     with submit_col2:
-        if st.button("🚀 Submit Leave Request", type="primary", use_container_width=True):
+        submit_button = st.button("🚀 Submit Leave Request", type="primary", use_container_width=True, key="submit_leave_request")
+        
+        if submit_button:
             if not all([employee_name, employee_code, department != "Select Department", 
                         leave_type != "Select Type", purpose, superior_name != "Select Manager"]):
                 st.markdown('''
@@ -1864,9 +1916,9 @@ with tab1:
                                 ''', unsafe_allow_html=True)
                                 
                                 st.balloons()
-                                time.sleep(3)
-                                st.session_state.form_submitted = True
-                                st.session_state.reset_forms = True
+                                # Set flag to reset form on next render
+                                st.session_state.reset_form_tab1 = True
+                                time.sleep(2)
                                 st.rerun()
                             else:
                                 # Show manual approval code section
@@ -1940,9 +1992,9 @@ with tab1:
                                 """.format(approval_password), unsafe_allow_html=True)
                                 
                                 st.balloons()
-                                time.sleep(3)
-                                st.session_state.form_submitted = True
-                                st.session_state.reset_forms = True
+                                # Set flag to reset form on next render
+                                st.session_state.reset_form_tab1 = True
+                                time.sleep(2)
                                 st.rerun()
                                 
                         except Exception as e:
@@ -1973,11 +2025,6 @@ with tab1:
                         ''', unsafe_allow_html=True)
 
 with tab2:
-    # Check if we need to reset the form
-    if st.session_state.reset_forms:
-        st.session_state.reset_forms = False
-        st.rerun()
-    
     # Approval Portal Header
     st.markdown("""
         <div class="section-header">
@@ -2008,15 +2055,25 @@ with tab2:
         </div>
     """, unsafe_allow_html=True)
     
+    # Reset form if flag is set
+    if st.session_state.reset_form_tab2:
+        st.session_state.form_data_tab2 = {
+            'approval_password': '',
+            'action': 'Select Decision'
+        }
+        st.session_state.reset_form_tab2 = False
+    
     # Form Fields - ONLY APPROVAL CODE REQUIRED
     col1, col2 = st.columns([1, 1], gap="large")
     
     with col1:
         approval_password_input = st.text_input(
             "🔑 Approval Code",
+            value=st.session_state.form_data_tab2['approval_password'],
             type="password",
             placeholder="Enter 5-character code",
-            help="Enter the unique code from the approval email"
+            help="Enter the unique code from the approval email",
+            key="approval_code_input"
         )
     
     # Decision Section
@@ -2036,14 +2093,21 @@ with tab2:
         </div>
     """, unsafe_allow_html=True)
     
+    action_options = ["Select Decision", "✅ Approve", "❌ Reject"]
+    action_index = action_options.index(st.session_state.form_data_tab2['action'])
+    
     action = st.selectbox(
         "Select Action",
-        ["Select Decision", "✅ Approve", "❌ Reject"],
-        label_visibility="collapsed"
+        action_options,
+        index=action_index,
+        label_visibility="collapsed",
+        key="action_select"
     )
     
     # Submit Decision Button
-    if st.button("Submit Decision", type="primary", use_container_width=True):
+    submit_decision_button = st.button("Submit Decision", type="primary", use_container_width=True, key="submit_decision_button")
+    
+    if submit_decision_button:
         if not all([approval_password_input, action != "Select Decision"]):
             st.markdown('''
                 <div class="error-message">
@@ -2098,9 +2162,9 @@ with tab2:
                         ''', unsafe_allow_html=True)
                         
                         st.balloons()
+                        # Set flag to reset form on next render
+                        st.session_state.reset_form_tab2 = True
                         time.sleep(2)
-                        st.session_state.approval_submitted = True
-                        st.session_state.reset_forms = True
                         st.rerun()
                     else:
                         st.markdown('''
