@@ -762,6 +762,16 @@ st.markdown("""
             background-color: var(--input-bg) !important;
         }
     }
+    
+    /* Form reset animation */
+    .form-reset {
+        animation: fadeOut 0.5s ease forwards;
+    }
+    
+    @keyframes fadeOut {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-20px); }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -793,7 +803,13 @@ DEPARTMENTS = [
     "Administration"
 ]
 
-# Initialize session state
+# Initialize session state for form reset
+if 'form_submitted' not in st.session_state:
+    st.session_state.form_submitted = False
+if 'approval_submitted' not in st.session_state:
+    st.session_state.approval_submitted = False
+if 'reset_forms' not in st.session_state:
+    st.session_state.reset_forms = False
 if 'approval_code_to_copy' not in st.session_state:
     st.session_state.approval_code_to_copy = ""
 if 'show_copy_section' not in st.session_state:
@@ -1341,7 +1357,6 @@ def send_approval_email(employee_name, superior_name, superior_email, leave_deta
                     <ol>
                         <li>Visit: <a href="{app_url}">{app_url}</a></li>
                         <li>Click on "✅ Approval Portal" tab</li>
-                        <li>Enter your email: {superior_email}</li>
                         <li>Enter approval code: {approval_password}</li>
                         <li>Select Approve or Reject</li>
                         <li>Click Submit Decision</li>
@@ -1390,8 +1405,8 @@ def send_approval_email(employee_name, superior_name, superior_email, leave_deta
         st.error(f"❌ Email sending error: {error_msg}")
         return False
 
-def update_leave_status(sheet, superior_email, approval_password, status):
-    """Update leave status in Google Sheet"""
+def update_leave_status(sheet, approval_password, status):
+    """Update leave status in Google Sheet using only approval password"""
     try:
         all_records = sheet.get_all_values()
         
@@ -1399,7 +1414,7 @@ def update_leave_status(sheet, superior_email, approval_password, status):
             if idx == 0:  # Skip header
                 continue
             
-            if len(row) > 13 and row[10] == superior_email and row[13] == approval_password:
+            if len(row) > 13 and row[13] == approval_password:
                 sheet.update_cell(idx + 1, 12, status)  # Status column
                 sheet.update_cell(idx + 1, 13, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date
                 sheet.update_cell(idx + 1, 14, "USED")  # Mark password as used
@@ -1592,6 +1607,11 @@ st.markdown("""
 tab1, tab2 = st.tabs(["📝 Submit Leave Application", "✅ Approval Portal"])
 
 with tab1:
+    # Check if we need to reset the form
+    if st.session_state.reset_forms:
+        st.session_state.reset_forms = False
+        st.rerun()
+    
     # Email status warning at top of form
     if not email_config["configured"] or st.session_state.email_config_status == "Failed":
         st.markdown(f'''
@@ -1733,9 +1753,6 @@ with tab1:
         help="Select your direct reporting manager"
     )
     
-    # Information Box
-
-    
     # Submit Button with Beautiful Design
     submit_col1, submit_col2, submit_col3 = st.columns([1, 2, 1])
     with submit_col2:
@@ -1848,6 +1865,8 @@ with tab1:
                                 
                                 st.balloons()
                                 time.sleep(3)
+                                st.session_state.form_submitted = True
+                                st.session_state.reset_forms = True
                                 st.rerun()
                             else:
                                 # Show manual approval code section
@@ -1913,15 +1932,18 @@ with tab1:
                                         <ol style="color: #388e3c; margin-left: 20px;">
                                             <li>Visit: <strong>https://hr-application-rtundoncudkzt9efwnscey.streamlit.app/</strong></li>
                                             <li>Click on "✅ Approval Portal" tab</li>
-                                            <li>Enter email: <strong>{}</strong></li>
                                             <li>Enter approval code: <strong>{}</strong></li>
                                             <li>Select Approve or Reject</li>
                                             <li>Click Submit Decision</li>
                                         </ol>
                                     </div>
-                                """.format(superior_email, approval_password), unsafe_allow_html=True)
+                                """.format(approval_password), unsafe_allow_html=True)
                                 
                                 st.balloons()
+                                time.sleep(3)
+                                st.session_state.form_submitted = True
+                                st.session_state.reset_forms = True
+                                st.rerun()
                                 
                         except Exception as e:
                             st.markdown(f'''
@@ -1951,6 +1973,11 @@ with tab1:
                         ''', unsafe_allow_html=True)
 
 with tab2:
+    # Check if we need to reset the form
+    if st.session_state.reset_forms:
+        st.session_state.reset_forms = False
+        st.rerun()
+    
     # Approval Portal Header
     st.markdown("""
         <div class="section-header">
@@ -1958,7 +1985,7 @@ with tab2:
             <div>
                 <h3 style="margin: 0;">Manager Approval Portal</h3>
                 <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
-                    Securely approve or reject leave requests using your approval code
+                    Securely approve or reject leave requests using the approval code
                 </p>
             </div>
         </div>
@@ -1974,24 +2001,17 @@ with tab2:
                 <div>
                     <strong style="color: #0d47a1;">Secure Authentication Required</strong><br>
                     <span style="color: #1565c0; font-size: 0.95rem;">
-                        Use the unique approval code sent to your email for authentication
+                        Use the unique 5-character approval code sent via email for authentication
                     </span>
                 </div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    # Form Fields
+    # Form Fields - ONLY APPROVAL CODE REQUIRED
     col1, col2 = st.columns([1, 1], gap="large")
     
     with col1:
-        superior_email_input = st.text_input(
-            "📧 Manager Email",
-            placeholder="your.email@volarfashion.com",
-            help="Enter your registered manager email address"
-        )
-    
-    with col2:
         approval_password_input = st.text_input(
             "🔑 Approval Code",
             type="password",
@@ -2024,26 +2044,14 @@ with tab2:
     
     # Submit Decision Button
     if st.button("Submit Decision", type="primary", use_container_width=True):
-        if not all([superior_email_input, approval_password_input, action != "Select Decision"]):
+        if not all([approval_password_input, action != "Select Decision"]):
             st.markdown('''
                 <div class="error-message">
                     <div style="display: flex; align-items: center; justify-content: center;">
                         <div style="font-size: 1.5rem; margin-right: 10px;">⚠️</div>
                         <div>
                             <strong>Missing Information</strong><br>
-                            Please complete all fields and select a decision
-                        </div>
-                    </div>
-                </div>
-            ''', unsafe_allow_html=True)
-        elif superior_email_input not in SUPERIORS.values():
-            st.markdown('''
-                <div class="error-message">
-                    <div style="display: flex; align-items: center; justify-content: center;">
-                        <div style="font-size: 1.5rem; margin-right: 10px;">📧</div>
-                        <div>
-                            <strong>Unauthorized Access</strong><br>
-                            This email is not authorized for approvals
+                            Please enter approval code and select a decision
                         </div>
                     </div>
                 </div>
@@ -2055,7 +2063,7 @@ with tab2:
                         <div style="font-size: 1.5rem; margin-right: 10px;">🔑</div>
                             <div>
                             <strong>Invalid Code Format</strong><br>
-                            Please enter the exact 5-character code from your email
+                            Please enter the exact 5-character code from the approval email
                         </div>
                     </div>
                 </div>
@@ -2065,7 +2073,7 @@ with tab2:
                 sheet = setup_google_sheets()
                 if sheet:
                     status = "Approved" if action == "✅ Approve" else "Rejected"
-                    success = update_leave_status(sheet, superior_email_input, approval_password_input, status)
+                    success = update_leave_status(sheet, approval_password_input, status)
                     
                     if success:
                         status_color = "#155724" if status == "Approved" else "#721c24"
@@ -2091,6 +2099,8 @@ with tab2:
                         
                         st.balloons()
                         time.sleep(2)
+                        st.session_state.approval_submitted = True
+                        st.session_state.reset_forms = True
                         st.rerun()
                     else:
                         st.markdown('''
@@ -2100,7 +2110,7 @@ with tab2:
                                     <div>
                                         <strong>Authentication Failed</strong><br>
                                         Invalid code or code already used.<br>
-                                        Please check your email or contact HR for assistance.
+                                        Please check your approval code or contact HR for assistance.
                                     </div>
                                 </div>
                             </div>
