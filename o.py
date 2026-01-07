@@ -21,7 +21,7 @@ st.set_page_config(
     page_title="VOLAR FASHION - Leave Management",
     page_icon="✨",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"  # Changed to expanded to show sidebar by default
 )
 
 # Beautiful Elegant CSS with Premium Design - DARK MODE COMPATIBLE
@@ -772,8 +772,133 @@ st.markdown("""
         from { opacity: 1; transform: translateY(0); }
         to { opacity: 0; transform: translateY(-20px); }
     }
+    
+    /* Holiday table styles */
+    .holiday-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        font-size: 14px;
+    }
+    
+    .holiday-table th {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+    }
+    
+    .holiday-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .holiday-table tr:hover {
+        background-color: rgba(103, 58, 183, 0.05);
+    }
+    
+    .holiday-table tr:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .holiday-table tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .holiday-table tr:hover {
+            background-color: rgba(156, 107, 255, 0.1);
+        }
+    }
+    
+    .holiday-icon {
+        font-size: 16px;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+    
+    .holiday-date {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    .holiday-day {
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+    
+    .holiday-name {
+        font-weight: 500;
+    }
+    
+    .sidebar-logo {
+        display: block;
+        margin: 0 auto 20px auto;
+        max-width: 180px;
+        height: auto;
+    }
+    
+    .sidebar-header {
+        text-align: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--border-color);
+    }
+    
+    .sidebar-section {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    
+    .sidebar-section h4 {
+        color: var(--primary-color);
+        margin-top: 0;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        font-size: 16px;
+    }
+    
+    .sidebar-section h4 i {
+        margin-right: 10px;
+        font-size: 18px;
+    }
+    
+    .reset-form-btn {
+        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%) !important;
+        margin-top: 15px;
+        font-size: 14px !important;
+        padding: 8px 16px !important;
+    }
+    
+    .reset-form-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 15px rgba(255, 152, 0, 0.3) !important;
+    }
     </style>
 """, unsafe_allow_html=True)
+
+# Holiday data with icons
+HOLIDAYS = [
+    {"date": "01-Jan", "day": "Thursday", "holiday": "New Year", "icon": "🎉"},
+    {"date": "26-Jan", "day": "Monday", "holiday": "Republic Day", "icon": "🇮🇳"},
+    {"date": "04-Mar", "day": "Wednesday", "holiday": "Holi", "icon": "🎨"},
+    {"date": "20-Mar", "day": "Friday", "holiday": "Ramzan Eid", "icon": "🕌"},
+    {"date": "01-May", "day": "Friday", "holiday": "Maharashtra Day", "icon": "🏛️"},
+    {"date": "15-Aug", "day": "Saturday", "holiday": "Independence Day", "icon": "🎆"},
+    {"date": "14-Sep", "day": "Monday", "holiday": "Ganesh Chaturthi", "icon": "🐘"},
+    {"date": "02-Oct", "day": "Friday", "holiday": "Gandhi Jayanti", "icon": "👓"},
+    {"date": "21-Oct", "day": "Wednesday", "holiday": "Vijaydashmi", "icon": "⚔️"},
+    {"date": "08-Nov", "day": "Sunday", "holiday": "Diwali", "icon": "🪔"},
+    {"date": "11-Nov", "day": "Wednesday", "holiday": "Bhai Dooj", "icon": "👨‍👧"},
+    {"date": "25-Dec", "day": "Friday", "holiday": "Christmas", "icon": "🎄"}
+]
 
 # Superior details dictionary
 SUPERIORS = {
@@ -788,18 +913,24 @@ SUPERIORS = {
     "Rajeev Thakur": "Rajeev@vfemails.com",
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
-    
 }
 
 # Department options
 DEPARTMENTS = [
+    "Accounts and Finance",
+    "Administration",
+    "Business Development",
+    "Content",
+    "E-Commerce",
+    "Factory & Production",
+    "Graphics",
     "Human Resources",
-    "Finance",
-    "Ecom",
-    "Graphic Design",
-    "Sales and Marketing",
     "IT",
-    "Administration"
+    "Social Media",
+    "Bandra Store",
+    "Support Staff",
+    "Warehouse",
+    "SEO"
 ]
 
 # Initialize session state for form reset
@@ -833,6 +964,8 @@ if 'email_config_status' not in st.session_state:
     st.session_state.email_config_status = "Not Tested"
 if 'debug_logs' not in st.session_state:
     st.session_state.debug_logs = []
+if 'form_submitted' not in st.session_state:
+    st.session_state.form_submitted = False
 
 def add_debug_log(message, level="INFO"):
     """Add debug log message"""
@@ -1274,7 +1407,7 @@ def test_email_connection(test_recipient=None):
             "message": "❌ SMTP Authentication Failed",
             "details": f"Error: {error_msg}\n\n**Solution:** Use an App Password (16 chars), not your regular password. Enable 2-Step Verification first.",
             "sender": sender_email,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "timestamp": datetime.now().strftime("%Y-%m-d %H:%M:%S")
         }
         return result
     except socket.timeout as e:
@@ -1440,6 +1573,28 @@ def update_leave_status(sheet, approval_password, status):
         log_debug(f"Update error: {traceback.format_exc()}")
         return False
 
+def reset_form_tab1():
+    """Reset form in tab 1"""
+    st.session_state.reset_form_tab1 = True
+    st.session_state.form_data_tab1 = {
+        'employee_name': '',
+        'employee_code': '',
+        'department': 'Select Department',
+        'leave_type': 'Select Type',
+        'from_date': datetime.now().date(),
+        'till_date': datetime.now().date(),
+        'purpose': '',
+        'superior_name': 'Select Manager'
+    }
+
+def reset_form_tab2():
+    """Reset form in tab 2"""
+    st.session_state.reset_form_tab2 = True
+    st.session_state.form_data_tab2 = {
+        'approval_password': '',
+        'action': 'Select Decision'
+    }
+
 # JavaScript for copying to clipboard
 copy_js = """
 <script>
@@ -1462,141 +1617,112 @@ function copyToClipboard(text) {
 st.markdown(copy_js, unsafe_allow_html=True)
 
 # ============================================
-# SIDEBAR - EMAIL TESTING & CONFIGURATION
+# SIDEBAR
 # ============================================
-st.sidebar.title("🔧 Configuration Panel")
-
-# Check current email configuration
-email_config = check_email_configuration()
-
-# Display current email status
-st.sidebar.markdown("### 📧 Email Configuration")
-if email_config["configured"]:
-    st.sidebar.success(email_config["message"])
-    st.sidebar.info(f"**Sender:** {email_config['sender_email']}")
-    if 'password_type' in email_config:
-        st.sidebar.info(f"**Password Type:** {email_config['password_type']}")
-    if 'password_length' in email_config:
-        st.sidebar.info(f"**Password Length:** {email_config['password_length']} chars")
-    st.sidebar.info(f"**Source:** {email_config['source']}")
-else:
-    st.sidebar.error(email_config["message"])
-    st.sidebar.info(email_config["details"])
-
-# Test Google Sheets connection
-st.sidebar.markdown("---")
-if st.sidebar.button("🔗 Test Google Sheets Connection"):
-    with st.sidebar:
-        with st.spinner("Testing connection..."):
-            sheet = setup_google_sheets()
-            if sheet:
-                st.success("✅ Connected successfully!")
-                st.info(f"Sheet: Leave_Applications")
-                st.info(f"Rows: {sheet.row_count}")
-            else:
-                st.error("❌ Connection failed")
-
-# Email Testing Section
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 📧 Test Email Configuration")
-
-# Show test email input
-test_recipient = st.sidebar.text_input(
-    "Test Recipient Email",
-    value="",
-    placeholder="Enter email to send test to",
-    help="Leave empty to send test to yourself"
-)
-
-col1, col2 = st.sidebar.columns(2)
-with col1:
-    if st.button("🚀 Send Test Email", key="test_email_btn", use_container_width=True):
+with st.sidebar:
+    # Logo at the top
+    st.markdown('<div class="sidebar-header">', unsafe_allow_html=True)
+    st.image("https://volarfashion.in/images/logo.png", use_column_width=True, caption="VOLAR FASHION")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Holiday Calendar Section
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<h4><i>📅</i> 2024 Holiday Calendar</h4>', unsafe_allow_html=True)
+    
+    # Create holiday table
+    holiday_html = """
+    <table class="holiday-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Day</th>
+                <th>Holiday</th>
+            </tr>
+        </thead>
+        <tbody>
+    """
+    
+    for holiday in HOLIDAYS:
+        holiday_html += f"""
+            <tr>
+                <td>
+                    <span class="holiday-icon">{holiday['icon']}</span>
+                    <span class="holiday-date">{holiday['date']}</span>
+                </td>
+                <td><span class="holiday-day">{holiday['day']}</span></td>
+                <td><span class="holiday-name">{holiday['holiday']}</span></td>
+            </tr>
+        """
+    
+    holiday_html += """
+        </tbody>
+    </table>
+    """
+    
+    st.markdown(holiday_html, unsafe_allow_html=True)
+    
+    # Holiday Legend
+    st.markdown("---")
+    st.markdown("""
+    <div style="font-size: 12px; color: #718096;">
+        <strong>Legend:</strong><br>
+        🎉 New Year | 🇮🇳 National | 🎨 Festival | 🕌 Religious<br>
+        🏛️ State | 🎆 Independence | 🐘 Ganesh | 👓 Gandhi<br>
+        ⚔️ Vijaydashmi | 🪔 Diwali | 👨‍👧 Bhai Dooj | 🎄 Christmas
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Form Reset Buttons
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<h4><i>🔄</i> Form Management</h4>', unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Clear Form 1", key="reset_tab1_sidebar", use_container_width=True):
+            reset_form_tab1()
+            st.success("✓ Tab 1 form cleared!")
+    with col2:
+        if st.button("Clear Form 2", key="reset_tab2_sidebar", use_container_width=True):
+            reset_form_tab2()
+            st.success("✓ Tab 2 form cleared!")
+    
+    st.markdown('<p style="font-size: 12px; color: #718096; margin-top: 10px;">Clear forms to start fresh applications</p>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Email Testing Section (moved from main sidebar)
+    st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+    st.markdown('<h4><i>🔧</i> Email Configuration</h4>', unsafe_allow_html=True)
+    
+    # Check current email configuration
+    email_config = check_email_configuration()
+    
+    if email_config["configured"]:
+        st.success("✅ Email Configured")
+    else:
+        st.error("❌ Email Not Configured")
+    
+    test_recipient = st.text_input(
+        "Test Email",
+        value="",
+        placeholder="Enter test email address",
+        help="Send test email to verify configuration",
+        key="test_email_input_sidebar"
+    )
+    
+    if st.button("Send Test Email", key="test_email_btn_sidebar", use_container_width=True):
         with st.spinner("Sending test email..."):
             result = test_email_connection(test_recipient)
             st.session_state.test_email_result = result
             
             if result["success"]:
                 st.session_state.email_config_status = "Working"
-                st.sidebar.success("✅ Test email sent successfully!")
+                st.success("✅ Test email sent!")
             else:
                 st.session_state.email_config_status = "Failed"
-                st.sidebar.error("❌ Test email failed")
-
-with col2:
-    if st.button("🔄 Clear Logs", key="clear_logs", use_container_width=True):
-        st.session_state.debug_logs = []
-
-# Show last test result if available
-if st.session_state.test_email_result:
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📋 Last Test Result")
-    if st.session_state.test_email_result["success"]:
-        st.sidebar.success("✅ Last test: SUCCESS")
-        st.sidebar.info(f"**Method:** {st.session_state.test_email_result.get('method', 'Unknown')}")
-    else:
-        st.sidebar.error("❌ Last test: FAILED")
-        with st.sidebar.expander("View Error Details"):
-            st.error(st.session_state.test_email_result.get('message', 'No error message'))
-            st.info(st.session_state.test_email_result.get('details', 'No details'))
-
-# Debug Logs Section
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 📝 Debug Logs")
-if st.sidebar.checkbox("Show Debug Logs", value=False):
-    if st.session_state.debug_logs:
-        debug_logs_html = "<div class='debug-log'>"
-        for log in reversed(st.session_state.debug_logs[-10:]):  # Show last 10 logs
-            if "ERROR" in log:
-                debug_logs_html += f"<div style='color: #dc3545;'>{log}</div>"
-            elif "SUCCESS" in log or "INFO" in log:
-                debug_logs_html += f"<div style='color: #28a745;'>{log}</div>"
-            elif "WARNING" in log:
-                debug_logs_html += f"<div style='color: #ffc107;'>{log}</div>"
-            else:
-                debug_logs_html += f"<div>{log}</div>"
-        debug_logs_html += "</div>"
-        st.sidebar.markdown(debug_logs_html, unsafe_allow_html=True)
-    else:
-        st.sidebar.info("No debug logs yet")
-
-# Email Configuration Help
-st.sidebar.markdown("---")
-with st.sidebar.expander("📖 Email Setup Guide"):
-    st.markdown("""
-    **Step-by-Step Gmail Configuration:**
+                st.error("❌ Test email failed")
     
-    1. **Enable 2-Step Verification:**
-       - Go to: https://myaccount.google.com/security
-       - Click "2-Step Verification"
-       - Follow prompts to enable it
-    
-    2. **Generate App Password:**
-       - Go to: https://myaccount.google.com/apppasswords
-       - Select "Mail" as app
-       - Select "Other (Custom name)" as device
-       - Name it "VOLAR FASHION Streamlit"
-       - Click "Generate"
-       - **Copy the 16-character password**
-    
-    3. **Update Streamlit Secrets:**
-       - In Streamlit Cloud, go to App Settings → Secrets
-       - Add this configuration:
-    ```toml
-    [EMAIL]
-    sender_email = "hrvolarfashion@gmail.com"
-    sender_password = "your-16-character-app-password"
-    ```
-    
-    4. **Test Configuration:**
-       - Click "Send Test Email" in sidebar
-       - Check if test email is received
-    
-    **Common Issues:**
-    - ❌ Using regular Gmail password → Use App Password
-    - ❌ 2-Step Verification not enabled → Enable it first
-    - ❌ Outdated password → Generate new App Password
-    - ❌ Network issues → Wait and retry
-    """)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================
 # MAIN APPLICATION
@@ -1664,16 +1790,7 @@ with tab1:
     
     # Reset form if flag is set
     if st.session_state.reset_form_tab1:
-        st.session_state.form_data_tab1 = {
-            'employee_name': '',
-            'employee_code': '',
-            'department': 'Select Department',
-            'leave_type': 'Select Type',
-            'from_date': datetime.now().date(),
-            'till_date': datetime.now().date(),
-            'purpose': '',
-            'superior_name': 'Select Manager'
-        }
+        reset_form_tab1()
         st.session_state.reset_form_tab1 = False
     
     # Two-column layout
@@ -1765,7 +1882,7 @@ with tab1:
                         You're requesting to leave early from work today. Only 2 Early Leaves are Permitted per month.
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
+            ""', unsafe_allow_html=True)
     else:
         no_of_days = "N/A"
     
@@ -2056,10 +2173,7 @@ with tab2:
     
     # Reset form if flag is set
     if st.session_state.reset_form_tab2:
-        st.session_state.form_data_tab2 = {
-            'approval_password': '',
-            'action': 'Select Decision'
-        }
+        reset_form_tab2()
         st.session_state.reset_form_tab2 = False
     
     # Form Fields - ONLY APPROVAL CODE REQUIRED
