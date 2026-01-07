@@ -1407,7 +1407,7 @@ def test_email_connection(test_recipient=None):
             "message": "❌ SMTP Authentication Failed",
             "details": f"Error: {error_msg}\n\n**Solution:** Use an App Password (16 chars), not your regular password. Enable 2-Step Verification first.",
             "sender": sender_email,
-            "timestamp": datetime.now().strftime("%Y-%m-d %H:%M:%S")
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         return result
     except socket.timeout as e:
@@ -1882,15 +1882,15 @@ with tab1:
                         You're requesting to leave early from work today. Only 2 Early Leaves are Permitted per month.
                     </div>
                 </div>
-            ""', unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
     else:
         no_of_days = "N/A"
     
-    # Purpose Section
+    # Purpose Section - Fixed emoji issue
     st.markdown("""
         <div style="margin-top: 2.5rem;">
             <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📝</div>
+                <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">\U0001f4dd</div>
                 <div>
                     <h3 style="margin: 0;">Leave Details</h3>
                     <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
