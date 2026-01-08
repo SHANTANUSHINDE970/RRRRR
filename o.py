@@ -2381,7 +2381,7 @@ with tab3:
         <div class="section-header">
             <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
             <div>
-                <h3 style="margin: 0;">Company Holidays 2025</h3>
+                <h3 style="margin: 0;">Company Holidays 2026</h3>
                 <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
                     Plan your leaves with our official holiday calendar
                 </p>
@@ -2392,15 +2392,15 @@ with tab3:
     # Simple holiday count
     st.markdown(f"""
         <div style="text-align: center; margin: 2rem 0; padding: 1.5rem; background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%); border-radius: 16px; color: white;">
-            <div style="font-size: 2.5rem; font-weight: 700;">{len(HOLIDAYS_2025)}</div>
-            <div style="font-size: 1.1rem; font-weight: 500;">Official Holidays in 2025</div>
+            <div style="font-size: 2.5rem; font-weight: 700;">{len(HOLIDAYS_2026)}</div>
+            <div style="font-size: 1.1rem; font-weight: 500;">Official Holidays in 2026</div>
         </div>
     """, unsafe_allow_html=True)
     
     # Simple Holiday Cards Grid
     st.markdown('<div class="holiday-grid">', unsafe_allow_html=True)
     
-    for holiday in HOLIDAYS_2025:
+    for holiday in HOLIDAYS_2026:
         st.markdown(f"""
             <div class="holiday-card">
                 <div class="holiday-date">{holiday["date"]}</div>
