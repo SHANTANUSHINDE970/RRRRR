@@ -934,31 +934,42 @@ st.markdown("""
         color: var(--text-secondary);
     }
     
-    /* Cluster Holiday Styles */
     .cluster-section {
-        background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin: 1.5rem 0;
-        border: 2px dashed #4dabf7;
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border: 2px solid #3b82f6;
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+}
+
+/* Light mode override */
+@media (prefers-color-scheme: light) {
+    .cluster-section {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
     }
-    
-    .cluster-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-    
-    .cluster-badge {
-        background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
-        color: white;
-        padding: 0.3rem 1rem;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin-left: 10px;
-    }
-    
+}
+
+.cluster-header h3 {
+    color: #ffffff !important;
+    margin: 0;
+}
+
+.cluster-header p {
+    color: #dbeafe !important;
+    margin: 5px 0 0 0;
+    font-size: 0.95rem;
+}
+
+.cluster-badge {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #78350f;
+    padding: 0.3rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-left: 10px;
+}
     .add-cluster-btn {
         background: linear-gradient(135deg, #38d9a9 0%, #20c997 100%);
         color: white;
