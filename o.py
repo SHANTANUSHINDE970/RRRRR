@@ -2084,9 +2084,7 @@ with tab1:
                         <p style="margin: 5px 0 0 0; color: #4dabf7; font-size: 0.95rem;">
                             Add multiple leave periods below (each will have separate approval code)
                         </p>
-                    </div>
-                    <div class="cluster-badge">CLUSTER</div>
-                </div>
+               
             </div>
         """, unsafe_allow_html=True)
         
