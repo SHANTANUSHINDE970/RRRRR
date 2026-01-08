@@ -1484,15 +1484,29 @@ def test_email_connection(test_recipient=None):
         }
         return result
 
+def calculate_working_days(from_date, till_date):
+    """Calculate number of working days excluding Sundays"""
+    total_days = (till_date - from_date).days + 1
+    working_days = 0
+    
+    current_date = from_date
+    for i in range(total_days):
+        # Check if current day is not Sunday (Monday=0, Sunday=6)
+        if current_date.weekday() != 6:  # 6 means Sunday
+            working_days += 1
+        current_date += timedelta(days=1)
+    
+    return working_days
+
 def calculate_days(from_date, till_date, leave_type):
-    """Calculate number of days"""
+    """Calculate number of days with proper logic"""
     if leave_type == "Half Day":
         return 0.5
     elif leave_type == "Early Exit":
         return "N/A"
     else:
-        delta = till_date - from_date
-        return delta.days + 1
+        # For Full Day leave, calculate working days excluding Sundays
+        return calculate_working_days(from_date, till_date)
 
 def send_approval_email(employee_name, superior_name, superior_email, leave_details, approval_password):
     """Send approval request email to superior"""
@@ -1918,13 +1932,23 @@ with tab1:
             except:
                 till_date_value = datetime.now().date()
         
-        till_date = st.date_input(
-            "📅 End Date",
-            value=till_date_value,
-            min_value=datetime.now().date(),
-            help="Select the last day of your leave",
-            key="till_date_input"
-        )
+        # For Half Day, set till_date to same as from_date
+        if leave_type == "Half Day":
+            till_date = st.date_input(
+                "📅 End Date",
+                value=from_date,  # Set to same as from_date
+                min_value=datetime.now().date(),
+                help="For Half Day leave, end date must be same as start date",
+                key="till_date_input"
+            )
+        else:
+            till_date = st.date_input(
+                "📅 End Date",
+                value=till_date_value,
+                min_value=datetime.now().date(),
+                help="Select the last day of your leave",
+                key="till_date_input"
+            )
     
     # Duration Card with Animation
     if leave_type != "Select Type":
@@ -1937,7 +1961,12 @@ with tab1:
                     <div style="font-size: 2.5rem; font-weight: 700; color: #553c9a; margin: 10px 0;">
                         {no_of_days}
                     </div>
-                    <div style="font-size: 0.9rem; color: #805ad5;">days requested</div>
+                    <div style="font-size: 0.9rem; color: #805ad5;">
+                        {'working days' if leave_type == 'Full Day' else 'half day'}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #9c27b0; margin-top: 5px;">
+                        {'' if leave_type == 'Half Day' else '(Sundays excluded)'}
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
         else:
@@ -1992,27 +2021,34 @@ with tab1:
         submit_button = st.button("🚀 Submit Leave Request", type="primary", use_container_width=True, key="submit_leave_request")
         
         if submit_button:
+            # VALIDATION CHECKS
+            validation_passed = True
+            error_message = ""
+            
+            # Check all required fields
             if not all([employee_name, employee_code, department != "Select Department", 
                         leave_type != "Select Type", purpose, superior_name != "Select Manager"]):
-                st.markdown('''
+                validation_passed = False
+                error_message = "Please complete all required fields"
+            
+            # Check date validity
+            elif from_date > till_date:
+                validation_passed = False
+                error_message = "End date must be after or equal to start date"
+            
+            # Special check for Half Day leave
+            elif leave_type == "Half Day" and from_date != till_date:
+                validation_passed = False
+                error_message = "For Half Day leave, start date and end date must be the same"
+            
+            if not validation_passed:
+                st.markdown(f'''
                     <div class="error-message">
                         <div style="display: flex; align-items: center; justify-content: center;">
                             <div style="font-size: 1.5rem; margin-right: 10px;">⚠️</div>
                             <div>
-                                <strong>Please complete all required fields</strong><br>
-                                Ensure all sections are properly filled before submission
-                            </div>
-                        </div>
-                    </div>
-                ''', unsafe_allow_html=True)
-            elif from_date > till_date:
-                st.markdown('''
-                    <div class="error-message">
-                        <div style="display: flex; align-items: center; justify-content: center;">
-                            <div style="font-size: 1.5rem; margin-right: 10px;">📅</div>
-                            <div>
-                                <strong>Date Error</strong><br>
-                                End date must be after or equal to start date
+                                <strong>{error_message}</strong><br>
+                                Please correct the error and try again
                             </div>
                         </div>
                     </div>
