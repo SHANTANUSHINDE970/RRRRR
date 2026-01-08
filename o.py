@@ -961,7 +961,15 @@ st.markdown("""
     font-size: 0.95rem;
 }
 
-
+.cluster-badge {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #78350f;
+    padding: 0.3rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-left: 10px;
+}
     .add-cluster-btn {
         background: linear-gradient(135deg, #38d9a9 0%, #20c997 100%);
         color: white;
@@ -2077,7 +2085,7 @@ with tab1:
                             Add multiple leave periods below (each will have separate approval code)
                         </p>
                     </div>
-                    
+                    <div class="cluster-badge">CLUSTER</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
