@@ -971,7 +971,7 @@ DEPARTMENTS = [
 ]
 
 # Holidays data - SIMPLIFIED
-HOLIDAYS_2025 = [
+HOLIDAYS_2026 = [
     {"date": "01-Jan", "day": "Thursday", "holiday": "New Year"},
     {"date": "26-Jan", "day": "Monday", "holiday": "Republic Day"},
     {"date": "04-Mar", "day": "Wednesday", "holiday": "Holi"},
