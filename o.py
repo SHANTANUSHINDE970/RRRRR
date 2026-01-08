@@ -773,7 +773,7 @@ st.markdown("""
         to { opacity: 0; transform: translateY(-20px); }
     }
     
-    /* Holidays Table Styles */
+    /* Holidays Table Styles - SIMPLIFIED */
     .holidays-table-container {
         background: var(--card-bg);
         border-radius: 24px;
@@ -800,11 +800,11 @@ st.markdown("""
         border-radius: 16px;
         padding: 1.5rem;
         margin: 1rem 0;
-        border-left: 5px solid;
-        border-color: var(--primary-color);
+        border-left: 5px solid #673ab7;
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
     
     .holiday-card:hover {
@@ -829,7 +829,7 @@ st.markdown("""
     }
     
     .holiday-date {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         font-weight: 700;
         color: var(--primary-color);
         margin-bottom: 0.5rem;
@@ -843,8 +843,19 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
+    .holiday-day {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        padding: 0.3rem 1rem;
+        background: rgba(103, 58, 183, 0.1);
+        border-radius: 20px;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+    }
+    
     .holiday-name {
-        font-size: 1.6rem;
+        font-size: 1.4rem;
         font-weight: 600;
         color: var(--text-primary);
         margin-bottom: 0.5rem;
@@ -853,97 +864,11 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
     }
     
-    .holiday-day {
-        font-size: 1rem;
-        color: var(--text-secondary);
-        font-weight: 500;
-        padding: 0.3rem 1rem;
-        background: linear-gradient(135deg, var(--accent-color) 0%, #03a9f4 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        border-radius: 20px;
-        display: inline-block;
-        margin-bottom: 1rem;
-    }
-    
-    .calendar-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.5rem;
-        margin-right: 1.5rem;
-        flex-shrink: 0;
-    }
-    
     .holiday-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 1.5rem;
         margin-top: 2rem;
-    }
-    
-    .holiday-badge {
-        background: linear-gradient(135deg, #673ab7 0%, #2196f3 100%);
-        color: white;
-        padding: 0.3rem 1rem;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        display: inline-block;
-        margin-top: 0.5rem;
-    }
-    
-    .holiday-count {
-        text-align: center;
-        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 3rem;
-        font-weight: 700;
-        margin: 2rem 0;
-    }
-    
-    .holiday-legend {
-        display: flex;
-        justify-content: center;
-        gap: 2rem;
-        margin-top: 2rem;
-        flex-wrap: wrap;
-    }
-    
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.9rem;
-        color: var(--text-secondary);
-    }
-    
-    .legend-color {
-        width: 15px;
-        height: 15px;
-        border-radius: 4px;
-    }
-    
-    .public-holiday {
-        background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
-    }
-    
-    .religious-holiday {
-        background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);
-    }
-    
-    .national-holiday {
-        background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
-    }
-    
-    .seasonal-holiday {
-        background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
     }
     
     /* Responsive adjustments */
@@ -955,6 +880,58 @@ st.markdown("""
         .holiday-card {
             padding: 1.2rem;
         }
+    }
+    
+    /* Simple table layout for compact view */
+    .simple-holiday-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-left: 4px solid #673ab7;
+        display: flex;
+        align-items: center;
+        transition: all 0.3s ease;
+    }
+    
+    .simple-holiday-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(103, 58, 183, 0.1);
+    }
+    
+    .date-badge {
+        background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        min-width: 80px;
+        text-align: center;
+        margin-right: 1rem;
+    }
+    
+    .day-badge {
+        background: rgba(33, 150, 243, 0.1);
+        color: var(--accent-color);
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        margin-right: 1rem;
+    }
+    
+    .holiday-info {
+        flex-grow: 1;
+    }
+    
+    .holiday-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.2rem;
+    }
+    
+    .holiday-subtitle {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -993,20 +970,20 @@ DEPARTMENTS = [
 "SEO"
 ]
 
-# Holidays data
+# Holidays data - SIMPLIFIED
 HOLIDAYS_2025 = [
-    {"date": "01-Jan", "day": "Thursday", "holiday": "New Year", "type": "national"},
-    {"date": "26-Jan", "day": "Monday", "holiday": "Republic Day", "type": "national"},
-    {"date": "04-Mar", "day": "Wednesday", "holiday": "Holi", "type": "religious"},
-    {"date": "20-Mar", "day": "Friday", "holiday": "Ramzan Eid", "type": "religious"},
-    {"date": "01-May", "day": "Friday", "holiday": "Maharashtra Day", "type": "regional"},
-    {"date": "15-Aug", "day": "Saturday", "holiday": "Independence Day", "type": "national"},
-    {"date": "14-Sep", "day": "Monday", "holiday": "Ganesh Chaturthi", "type": "religious"},
-    {"date": "02-Oct", "day": "Friday", "holiday": "Gandhi Jayanti", "type": "national"},
-    {"date": "21-Oct", "day": "Wednesday", "holiday": "Vijaydashmi", "type": "religious"},
-    {"date": "08-Nov", "day": "Sunday", "holiday": "Diwali", "type": "religious"},
-    {"date": "11-Nov", "day": "Wednesday", "holiday": "Bhai Dooj", "type": "religious"},
-    {"date": "25-Dec", "day": "Friday", "holiday": "Christmas", "type": "religious"}
+    {"date": "01-Jan", "day": "Thursday", "holiday": "New Year"},
+    {"date": "26-Jan", "day": "Monday", "holiday": "Republic Day"},
+    {"date": "04-Mar", "day": "Wednesday", "holiday": "Holi"},
+    {"date": "20-Mar", "day": "Friday", "holiday": "Ramzan Eid"},
+    {"date": "01-May", "day": "Friday", "holiday": "Maharashtra Day"},
+    {"date": "15-Aug", "day": "Saturday", "holiday": "Independence Day"},
+    {"date": "14-Sep", "day": "Monday", "holiday": "Ganesh Chaturthi"},
+    {"date": "02-Oct", "day": "Friday", "holiday": "Gandhi Jayanti"},
+    {"date": "21-Oct", "day": "Wednesday", "holiday": "Vijaydashmi"},
+    {"date": "08-Nov", "day": "Sunday", "holiday": "Diwali"},
+    {"date": "11-Nov", "day": "Wednesday", "holiday": "Bhai Dooj"},
+    {"date": "25-Dec", "day": "Friday", "holiday": "Christmas"}
 ]
 
 # Initialize session state for form reset
@@ -1492,7 +1469,7 @@ def test_email_connection(test_recipient=None):
             "message": "❌ Connection Timeout",
             "details": error_msg,
             "sender": sender_email,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "timestamp": datetime.now().strftime("%Y-%m-d %H:%M:%S")
         }
         return result
     except Exception as e:
@@ -1818,7 +1795,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Create beautiful tabs - ADDED NEW HOLIDAYS TAB
-tab1, tab2, tab3 = st.tabs(["📝 Submit Leave Application", "✅ Approval Portal", "🎉 Company Holidays"])
+tab1, tab2, tab3 = st.tabs(["📝 Submit Leave Application", "✅ Approval Portal", "📅 Company Holidays"])
 
 with tab1:
     # Email status warning at top of form
@@ -2399,70 +2376,40 @@ with tab2:
                     ''', unsafe_allow_html=True)
 
 with tab3:
-    # Holidays Tab - Beautiful Design
+    # SIMPLE HOLIDAYS TAB - CLEAN DESIGN
     st.markdown("""
         <div class="section-header">
-            <div class="icon-badge" style="background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);">🎉</div>
+            <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
             <div>
-                <h3 style="margin: 0;">Company Holidays Calendar 2025</h3>
+                <h3 style="margin: 0;">Company Holidays 2025</h3>
                 <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
-                    Plan your leaves and vacations with our complete holiday schedule
+                    Plan your leaves with our official holiday calendar
                 </p>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    # Stats Counter
+    # Simple holiday count
     st.markdown(f"""
-        <div style="text-align: center; margin: 3rem 0;">
-            <div class="holiday-count">{len(HOLIDAYS_2025)}</div>
-            <div style="font-size: 1.2rem; color: #718096; font-weight: 500;">
-                Official Holidays in 2025
-            </div>
+        <div style="text-align: center; margin: 2rem 0; padding: 1.5rem; background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%); border-radius: 16px; color: white;">
+            <div style="font-size: 2.5rem; font-weight: 700;">{len(HOLIDAYS_2025)}</div>
+            <div style="font-size: 1.1rem; font-weight: 500;">Official Holidays in 2025</div>
         </div>
     """, unsafe_allow_html=True)
     
-   
-    
-    # Holiday Cards Grid
+    # Simple Holiday Cards Grid
     st.markdown('<div class="holiday-grid">', unsafe_allow_html=True)
     
-    # Get holiday type color mapping
-   
-    
     for holiday in HOLIDAYS_2025:
-        # Determine color based on type
-        badge_color = type_colors.get(holiday["type"], "national-holiday")
-        
         st.markdown(f"""
             <div class="holiday-card">
-                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                    <div class="calendar-icon">📅</div>
-                    <div>
-                        <div class="holiday-date">{holiday["date"]}</div>
-                        <div class="holiday-day">{holiday["day"]}</div>
-                    </div>
-                </div>
+                <div class="holiday-date">{holiday["date"]}</div>
+                <div class="holiday-day">{holiday["day"]}</div>
                 <div class="holiday-name">{holiday["holiday"]}</div>
-                <div class="holiday-badge {badge_color}">
-                    {holiday["type"].title()} Holiday
-                </div>
             </div>
         """, unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Important Notes
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
-                    padding: 2rem; border-radius: 20px; margin-top: 3rem; 
-                    border-left: 5px solid #2196f3;">
-            <div style="display: flex; align-items: flex-start;">
-                <div style="font-size: 2rem; margin-right: 15px; color: #2196f3;">📌</div>
-                
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
 
 # Footer
 st.markdown("""
