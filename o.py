@@ -986,6 +986,33 @@ st.markdown("""
         font-size: 12px;
         margin-top: 10px;
     }
+    
+    /* Code badge styles */
+    .code-badge {
+        background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
+        color: #856404;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        font-size: 0.9rem;
+        margin: 5px;
+        display: inline-block;
+        border: 1px solid #ffc107;
+    }
+    
+    .code-display {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        text-align: center;
+        font-size: 1.2rem;
+        letter-spacing: 2px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -1002,6 +1029,7 @@ SUPERIORS = {
     "Rajeev Thakur": "Rajeev@vfemails.com",
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
+    "d":"shinde78617@gmai.com"
     
 }
 
@@ -1046,8 +1074,7 @@ if 'clusters' not in st.session_state:
         'leave_type': 'Select Type',
         'from_date': datetime.now().date(),
         'till_date': datetime.now().date(),
-        'is_early_leave': False,
-        'is_half_day': False
+        'approval_code': ''
     }]
 if 'reset_form_tab1' not in st.session_state:
     st.session_state.reset_form_tab1 = False
@@ -1067,8 +1094,8 @@ if 'form_data_tab2' not in st.session_state:
         'approval_password': '',
         'action': 'Select Decision'
     }
-if 'approval_code_to_copy' not in st.session_state:
-    st.session_state.approval_code_to_copy = ""
+if 'cluster_codes' not in st.session_state:
+    st.session_state.cluster_codes = {}
 if 'show_copy_section' not in st.session_state:
     st.session_state.show_copy_section = False
 if 'test_email_result' not in st.session_state:
@@ -1095,7 +1122,7 @@ def log_debug(message):
     st.sidebar.text(f"{datetime.now().strftime('%H:%M:%S')}: {message}")
 
 def generate_approval_password():
-    """Generate a 5-digit alphanumeric password"""
+    """Generate a unique 5-digit alphanumeric password"""
     alphabet = string.ascii_uppercase + string.digits
     # Remove confusing characters (0, O, 1, I, L)
     alphabet = alphabet.replace('0', '').replace('O', '').replace('1', '').replace('I', '').replace('L', '')
@@ -1208,7 +1235,7 @@ def setup_google_sheets():
                         "Submission Date", "Employee Name", "Employee Code", "Department",
                         "Type of Leave", "No of Days", "Purpose of Leave", "From Date",
                         "Till Date", "Superior Name", "Superior Email", "Status", 
-                        "Approval Date", "Approval Password", "Is Cluster Holiday"
+                        "Approval Date", "Approval Password", "Is Cluster Holiday", "Cluster Number"
                     ]
                     sheet.append_row(headers)
                     log_debug("Added headers to sheet")
@@ -1568,8 +1595,8 @@ def calculate_days(from_date, till_date, leave_type):
         # For Full Day leave, calculate working days excluding Sundays
         return calculate_working_days(from_date, till_date)
 
-def send_approval_email(employee_name, superior_name, superior_email, leave_details, approval_password):
-    """Send approval request email to superior"""
+def send_approval_email(employee_name, superior_name, superior_email, clusters_data, cluster_codes):
+    """Send approval request email to superior with separate codes for each cluster"""
     try:
         log_debug(f"Preparing to send approval email to {superior_email}")
         
@@ -1599,45 +1626,104 @@ def send_approval_email(employee_name, superior_name, superior_email, leave_deta
         msg = MIMEMultipart('alternative')
         msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
         msg['To'] = superior_email
-        msg['Subject'] = f"Leave Approval Required: {employee_name}"
         
-        # Simple HTML email body - USING YOUR PREFERRED EMAIL UI
+        if len(clusters_data) > 1:
+            msg['Subject'] = f"CLUSTER LEAVE: {employee_name} - {len(clusters_data)} periods"
+        else:
+            msg['Subject'] = f"Leave Approval Required: {employee_name}"
+        
+        # Build clusters details HTML
+        clusters_html = ""
+        for i, cluster in enumerate(clusters_data):
+            days = calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type'])
+            days_display = "N/A" if cluster['leave_type'] == "Early Exit" else (f"{days} days" if cluster['leave_type'] == "Full Day" else "0.5 day")
+            
+            clusters_html += f"""
+            <div style="background: {'#f8f9ff' if i % 2 == 0 else '#f0f2ff'}; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #4dabf7;">
+                <h4 style="margin-top: 0; color: #339af0;">Period {i+1}</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 5px; width: 40%;"><strong>Leave Type:</strong></td>
+                        <td style="padding: 5px;">{cluster['leave_type']}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px;"><strong>From Date:</strong></td>
+                        <td style="padding: 5px;">{cluster['from_date'].strftime('%Y-%m-%d')}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px;"><strong>Till Date:</strong></td>
+                        <td style="padding: 5px;">{cluster['till_date'].strftime('%Y-%m-%d')}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px;"><strong>Duration:</strong></td>
+                        <td style="padding: 5px;">{days_display}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px;"><strong>Approval Code:</strong></td>
+                        <td style="padding: 5px;">
+                            <span style="background: #fff3cd; padding: 5px 10px; border-radius: 4px; font-family: 'Courier New', monospace; font-weight: bold; letter-spacing: 2px;">
+                                {cluster_codes.get(i, 'CODE MISSING')}
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            """
+        
+        # Simple HTML email body
         html_body = f"""
         <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #673ab7;">Leave Approval Required</h2>
-                <p>Dear {superior_name},</p>
-                
-                <div style="background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                    <h3>Employee Leave Request Details:</h3>
-                    <p><strong>Employee Name:</strong> {leave_details['employee_name']}</p>
-                    <p><strong>Employee Code:</strong> {leave_details['employee_code']}</p>
-                    <p><strong>Department:</strong> {leave_details['department']}</p>
-                    <p><strong>Leave Type:</strong> {leave_details['leave_type']}</p>
-                    <p><strong>From Date:</strong> {leave_details['from_date']}</p>
-                    <p><strong>Till Date:</strong> {leave_details['till_date']}</p>
-                    <p><strong>Duration:</strong> {leave_details['no_of_days']} days</p>
-                    <p><strong>Purpose:</strong> {leave_details['purpose']}</p>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+                .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }}
+                .info-box {{ background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0; }}
+                .cluster-box {{ background: #e6f0ff; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #4dabf7; }}
+                .code {{ background: #fff3cd; padding: 10px 15px; border-radius: 6px; font-family: 'Courier New', monospace; font-weight: bold; letter-spacing: 2px; display: inline-block; margin: 5px; border: 1px solid #ffc107; }}
+                .instructions {{ background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4caf50; }}
+                .footer {{ color: #666; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2 style="margin: 0;">Leave Approval Required</h2>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9;">VOLAR FASHION HR System</p>
                 </div>
                 
-                <div style="margin: 30px 0;">
-                    <p><strong>How to Approve/Reject:</strong></p>
+                <p>Dear {superior_name},</p>
+                
+                <div class="info-box">
+                    <h3 style="margin-top: 0; color: #673ab7;">Employee Information</h3>
+                    <p><strong>Employee Name:</strong> {employee_name}</p>
+                    <p><strong>Employee Code:</strong> {clusters_data[0].get('employee_code', 'N/A')}</p>
+                    <p><strong>Department:</strong> {clusters_data[0].get('department', 'N/A')}</p>
+                    <p><strong>Total Periods:</strong> {len(clusters_data)}</p>
+                    <p><strong>Purpose:</strong> {clusters_data[0].get('purpose', 'N/A')}</p>
+                </div>
+                
+                <h3 style="color: #339af0;">Leave Periods Details</h3>
+                {clusters_html}
+                
+                <div class="instructions">
+                    <h4 style="margin-top: 0; color: #2e7d32;">📋 How to Approve/Reject:</h4>
                     <ol>
                         <li>Visit: <a href="{app_url}">{app_url}</a></li>
                         <li>Click on "✅ Approval Portal" tab</li>
-                        <li>Enter approval code: {approval_password}</li>
-                        <li>Select Approve or Reject</li>
+                        <li><strong>For each period:</strong> Enter the specific approval code mentioned above</li>
+                        <li>Select Approve or Reject for that period</li>
                         <li>Click Submit Decision</li>
+                        <li><strong>Repeat</strong> for each period with its specific code</li>
                     </ol>
+                    <p><strong>Note:</strong> Each code can only be used once for its specific period.</p>
                 </div>
                 
-                <hr>
-                <p style="color: #666; font-size: 12px;">
+                <div class="footer">
                     VOLAR FASHION PVT LTD - HR Department<br>
                     📧 hrvolarfashion@gmail.com<br>
                     This is an automated message.
-                </p>
+                </div>
             </div>
         </body>
         </html>
@@ -1935,9 +2021,9 @@ with tab1:
             'leave_type': 'Select Type',
             'from_date': datetime.now().date(),
             'till_date': datetime.now().date(),
-            'is_early_leave': False,
-            'is_half_day': False
+            'approval_code': ''
         }]
+        st.session_state.cluster_codes = {}
         st.session_state.reset_form_tab1 = False
     
     # Two-column layout for basic info
@@ -1985,7 +2071,7 @@ with tab1:
                     <div>
                         <h3 style="margin: 0;">Cluster Holiday Periods</h3>
                         <p style="margin: 5px 0 0 0; color: #4dabf7; font-size: 0.95rem;">
-                            Add multiple leave periods below
+                            Add multiple leave periods below (each will have separate approval code)
                         </p>
                     </div>
                     <div class="cluster-badge">CLUSTER</div>
@@ -2081,8 +2167,7 @@ with tab1:
                 'leave_type': 'Select Type',
                 'from_date': datetime.now().date(),
                 'till_date': datetime.now().date(),
-                'is_early_leave': False,
-                'is_half_day': False
+                'approval_code': ''
             })
             st.rerun()
         
@@ -2288,7 +2373,11 @@ with tab1:
                     # Prepare data
                     submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     superior_email = SUPERIORS[superior_name]
-                    approval_password = generate_approval_password()
+                    
+                    # Generate unique codes for each cluster
+                    cluster_codes = {}
+                    for i in range(len(st.session_state.clusters)):
+                        cluster_codes[i] = generate_approval_password()
                     
                     # Connect to Google Sheets
                     sheet = setup_google_sheets()
@@ -2296,7 +2385,7 @@ with tab1:
                     if sheet:
                         try:
                             # Submit each cluster as separate row
-                            for cluster in st.session_state.clusters:
+                            for i, cluster in enumerate(st.session_state.clusters):
                                 # Prepare leave details
                                 leave_details = {
                                     "employee_name": employee_name,
@@ -2324,13 +2413,14 @@ with tab1:
                                     superior_email,
                                     "Pending",
                                     "",  # Approval Date (empty initially)
-                                    approval_password,
-                                    "Yes" if is_cluster and len(st.session_state.clusters) > 1 else "No"
+                                    cluster_codes[i],  # Unique code for this cluster
+                                    "Yes" if is_cluster else "No",
+                                    i+1 if is_cluster else ""  # Cluster number
                                 ]
                                 
                                 # Write to Google Sheets
                                 sheet.append_row(row_data)
-                                log_debug(f"Data written to Google Sheets for {employee_name} - {cluster['leave_type']}")
+                                log_debug(f"Data written to Google Sheets for {employee_name} - Period {i+1} - Code: {cluster_codes[i]}")
                             
                             # Try to send email only if configuration is working
                             email_sent = False
@@ -2338,25 +2428,21 @@ with tab1:
                             
                             if email_config["configured"]:
                                 try:
-                                    # Use first cluster for email details
-                                    first_cluster = st.session_state.clusters[0]
-                                    leave_details = {
-                                        "employee_name": employee_name,
-                                        "employee_code": employee_code,
-                                        "department": department,
-                                        "leave_type": f"Cluster ({len(st.session_state.clusters)} periods)" if is_cluster else first_cluster['leave_type'],
-                                        "no_of_days": "Multiple" if is_cluster else calculate_days(first_cluster['from_date'], first_cluster['till_date'], first_cluster['leave_type']),
-                                        "purpose": purpose,
-                                        "from_date": first_cluster['from_date'].strftime("%Y-%m-%d"),
-                                        "till_date": st.session_state.clusters[-1]['till_date'].strftime("%Y-%m-%d") if is_cluster else first_cluster['till_date'].strftime("%Y-%m-%d")
-                                    }
+                                    # Prepare clusters data for email
+                                    clusters_for_email = []
+                                    for cluster in st.session_state.clusters:
+                                        cluster_copy = cluster.copy()
+                                        cluster_copy['employee_code'] = employee_code
+                                        cluster_copy['department'] = department
+                                        cluster_copy['purpose'] = purpose
+                                        clusters_for_email.append(cluster_copy)
                                     
                                     email_sent = send_approval_email(
                                         employee_name,
                                         superior_name,
                                         superior_email,
-                                        leave_details,
-                                        approval_password
+                                        clusters_for_email,
+                                        cluster_codes
                                     )
                                     if not email_sent:
                                         email_error = "Email sending failed - check debug logs"
@@ -2386,8 +2472,8 @@ with tab1:
                                 time.sleep(2)
                                 st.rerun()
                             else:
-                                # Show manual approval code section
-                                st.session_state.approval_code_to_copy = approval_password
+                                # Show manual approval codes section
+                                st.session_state.cluster_codes = cluster_codes
                                 st.session_state.show_copy_section = True
                                 
                                 st.markdown(f'''
@@ -2404,7 +2490,7 @@ with tab1:
                                     </div>
                                 ''', unsafe_allow_html=True)
                                 
-                                # Manual approval code section
+                                # Manual approval codes section
                                 st.markdown("---")
                                 st.markdown("""
                                     <div style="text-align: center; margin: 2rem 0;">
@@ -2412,33 +2498,41 @@ with tab1:
                                             📋 Manual Approval Process
                                         </div>
                                         <p style="color: #718096; margin-bottom: 1.5rem;">
-                                            Please share this approval code with your manager <strong>{}</strong>:
+                                            Please share these approval codes with your manager <strong>{}</strong>:
                                         </p>
                                     </div>
                                 """.format(superior_name), unsafe_allow_html=True)
                                 
-                                # Approval code display with copy button
-                                st.markdown(f"""
-                                    <div style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); 
-                                                padding: 2rem; border-radius: 16px; text-align: center; 
-                                                margin: 1.5rem 0; border: 2px dashed #673ab7;">
-                                        <div style="font-size: 0.9rem; color: #6b46c1; font-weight: 500; margin-bottom: 10px;">
-                                            Approval Code for {superior_name}
+                                # Display all cluster codes
+                                for i, cluster in enumerate(st.session_state.clusters):
+                                    code = cluster_codes[i]
+                                    days = calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type'])
+                                    days_display = "N/A" if cluster['leave_type'] == "Early Exit" else (f"{days} days" if cluster['leave_type'] == "Full Day" else "0.5 day")
+                                    
+                                    st.markdown(f"""
+                                        <div style="background: {'#f8f9ff' if i % 2 == 0 else '#f0f2ff'}; padding: 1.5rem; border-radius: 12px; margin: 1rem 0; border-left: 4px solid #4dabf7;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                                <div>
+                                                    <div style="font-size: 1.1rem; font-weight: 600; color: #339af0;">Period {i+1}</div>
+                                                    <div style="font-size: 0.9rem; color: #718096;">
+                                                        {cluster['from_date'].strftime('%Y-%m-%d')} to {cluster['till_date'].strftime('%Y-%m-%d')} • {cluster['leave_type']} • {days_display}
+                                                    </div>
+                                                </div>
+                                                <div style="text-align: center;">
+                                                    <div style="font-size: 0.9rem; color: #6b46c1; font-weight: 500; margin-bottom: 5px;">
+                                                        Approval Code
+                                                    </div>
+                                                    <div style="font-size: 2rem; font-weight: 700; color: #553c9a; 
+                                                                letter-spacing: 4px; font-family: 'Courier New', monospace;">
+                                                        {code}
+                                                    </div>
+                                                    <button class="copy-code-btn" onclick="copyToClipboard('{code}')" style="margin-top: 10px;">
+                                                        📋 Copy Code
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style="font-size: 2.5rem; font-weight: 700; color: #553c9a; 
-                                                    letter-spacing: 4px; margin: 15px 0; font-family: 'Courier New', monospace;">
-                                            {approval_password}
-                                        </div>
-                                        <div style="font-size: 0.9rem; color: #805ad5; margin-bottom: 20px;">
-                                            5-character code (valid for single use)
-                                        </div>
-                                        
-                                        <button class="copy-code-btn" onclick="copyToClipboard('{approval_password}')">
-                                            📋 Copy Approval Code
-                                        </button>
-                                        <div id="copy-success" class="copy-success">✅ Copied to clipboard!</div>
-                                    </div>
-                                """, unsafe_allow_html=True)
+                                    """, unsafe_allow_html=True)
                                 
                                 # Instructions for manager
                                 st.markdown("""
@@ -2449,12 +2543,16 @@ with tab1:
                                         <ol style="color: #388e3c; margin-left: 20px;">
                                             <li>Visit: <strong>https://hr-application-rtundoncudkzt9efwnscey.streamlit.app/</strong></li>
                                             <li>Click on "✅ Approval Portal" tab</li>
-                                            <li>Enter approval code: <strong>{}</strong></li>
-                                            <li>Select Approve or Reject</li>
+                                            <li><strong>For each period:</strong> Enter the specific approval code mentioned above</li>
+                                            <li>Select Approve or Reject for that period</li>
                                             <li>Click Submit Decision</li>
+                                            <li><strong>Repeat</strong> for each period with its specific code</li>
                                         </ol>
+                                        <p style="color: #2e7d32; font-size: 0.9rem; margin-top: 10px;">
+                                            <strong>Note:</strong> Each code can only be used once for its specific period.
+                                        </p>
                                     </div>
-                                """.format(approval_password), unsafe_allow_html=True)
+                                """, unsafe_allow_html=True)
                                 
                                 st.balloons()
                                 # Set flag to reset form on next render
