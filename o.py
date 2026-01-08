@@ -933,6 +933,59 @@ st.markdown("""
         font-size: 0.9rem;
         color: var(--text-secondary);
     }
+    
+    /* Cluster Holiday Styles */
+    .cluster-section {
+        background: linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        border: 2px dashed #4dabf7;
+    }
+    
+    .cluster-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .cluster-badge {
+        background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
+        color: white;
+        padding: 0.3rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-left: 10px;
+    }
+    
+    .add-cluster-btn {
+        background: linear-gradient(135deg, #38d9a9 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        margin: 10px 0;
+        transition: all 0.3s;
+    }
+    
+    .add-cluster-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(56, 217, 169, 0.3);
+    }
+    
+    .remove-cluster-btn {
+        background: linear-gradient(135deg, #ff6b6b 0%, #fa5252 100%);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        margin-top: 10px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -986,7 +1039,16 @@ HOLIDAYS_2026 = [
     {"date": "25-Dec", "day": "Friday", "holiday": "Christmas"}
 ]
 
-# Initialize session state for form reset
+# Initialize session state
+if 'clusters' not in st.session_state:
+    st.session_state.clusters = [{
+        'cluster_number': 1,
+        'leave_type': 'Select Type',
+        'from_date': datetime.now().date(),
+        'till_date': datetime.now().date(),
+        'is_early_leave': False,
+        'is_half_day': False
+    }]
 if 'reset_form_tab1' not in st.session_state:
     st.session_state.reset_form_tab1 = False
 if 'reset_form_tab2' not in st.session_state:
@@ -996,11 +1058,9 @@ if 'form_data_tab1' not in st.session_state:
         'employee_name': '',
         'employee_code': '',
         'department': 'Select Department',
-        'leave_type': 'Select Type',
-        'from_date': datetime.now().date(),
-        'till_date': datetime.now().date(),
         'purpose': '',
-        'superior_name': 'Select Manager'
+        'superior_name': 'Select Manager',
+        'is_cluster': False
     }
 if 'form_data_tab2' not in st.session_state:
     st.session_state.form_data_tab2 = {
@@ -1148,7 +1208,7 @@ def setup_google_sheets():
                         "Submission Date", "Employee Name", "Employee Code", "Department",
                         "Type of Leave", "No of Days", "Purpose of Leave", "From Date",
                         "Till Date", "Superior Name", "Superior Email", "Status", 
-                        "Approval Date", "Approval Password"
+                        "Approval Date", "Approval Password", "Is Cluster Holiday"
                     ]
                     sheet.append_row(headers)
                     log_debug("Added headers to sheet")
@@ -1503,7 +1563,7 @@ def calculate_days(from_date, till_date, leave_type):
     if leave_type == "Half Day":
         return 0.5
     elif leave_type == "Early Exit":
-        return "N/A"
+        return ""
     else:
         # For Full Day leave, calculate working days excluding Sundays
         return calculate_working_days(from_date, till_date)
@@ -1866,15 +1926,21 @@ with tab1:
             'employee_name': '',
             'employee_code': '',
             'department': 'Select Department',
+            'purpose': '',
+            'superior_name': 'Select Manager',
+            'is_cluster': False
+        }
+        st.session_state.clusters = [{
+            'cluster_number': 1,
             'leave_type': 'Select Type',
             'from_date': datetime.now().date(),
             'till_date': datetime.now().date(),
-            'purpose': '',
-            'superior_name': 'Select Manager'
-        }
+            'is_early_leave': False,
+            'is_half_day': False
+        }]
         st.session_state.reset_form_tab1 = False
     
-    # Two-column layout
+    # Two-column layout for basic info
     col1, col2 = st.columns([1, 1], gap="large")
     
     with col1:
@@ -1892,6 +1958,8 @@ with tab1:
             help="Your unique employee identification code",
             key="employee_code_input"
         )
+    
+    with col2:
         department = st.selectbox(
             "🏛️ Department",
             ["Select Department"] + DEPARTMENTS,
@@ -1899,88 +1967,252 @@ with tab1:
             help="Select your department from the list",
             key="department_select"
         )
-    
-    with col2:
-        leave_type = st.selectbox(
-            "📋 Leave Type",
-            ["Select Type", "Full Day", "Half Day", "Early Exit"],
-            index=0 if st.session_state.form_data_tab1['leave_type'] == 'Select Type' else ["Select Type", "Full Day", "Half Day", "Early Exit"].index(st.session_state.form_data_tab1['leave_type']),
-            help="Select the type of leave you are requesting",
-            key="leave_type_select"
+        
+        # Cluster Holiday Option
+        is_cluster = st.checkbox(
+            "Is this a Cluster Holiday? (Multiple leave periods)",
+            value=st.session_state.form_data_tab1['is_cluster'],
+            help="Check this if you need to apply for multiple separate leave periods in one application",
+            key="is_cluster_checkbox"
         )
-        
-        # Get date values with fallback
-        from_date_value = st.session_state.form_data_tab1['from_date']
-        if isinstance(from_date_value, str):
-            try:
-                from_date_value = datetime.strptime(from_date_value, "%Y-%m-%d").date()
-            except:
-                from_date_value = datetime.now().date()
-        
-        from_date = st.date_input(
-            "📅 Start Date",
-            value=from_date_value,
-            min_value=datetime.now().date(),
-            help="Select the first day of your leave",
-            key="from_date_input"
-        )
-        
-        till_date_value = st.session_state.form_data_tab1['till_date']
-        if isinstance(till_date_value, str):
-            try:
-                till_date_value = datetime.strptime(till_date_value, "%Y-%m-%d").date()
-            except:
-                till_date_value = datetime.now().date()
-        
-        # For Half Day, set till_date to same as from_date
-        if leave_type == "Half Day":
-            till_date = st.date_input(
-                "📅 End Date",
-                value=from_date,  # Set to same as from_date
-                min_value=datetime.now().date(),
-                help="For Half Day leave, end date must be same as start date",
-                key="till_date_input"
-            )
-        else:
-            till_date = st.date_input(
-                "📅 End Date",
-                value=till_date_value,
-                min_value=datetime.now().date(),
-                help="Select the last day of your leave",
-                key="till_date_input"
-            )
     
-    # Duration Card with Animation
-    if leave_type != "Select Type":
-        no_of_days = calculate_days(from_date, till_date, leave_type)
+    # CLUSTER HOLIDAY SECTION
+    if is_cluster:
+        st.markdown("""
+            <div class="cluster-section">
+                <div class="cluster-header">
+                    <div class="icon-badge" style="background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);">📅</div>
+                    <div>
+                        <h3 style="margin: 0;">Cluster Holiday Periods</h3>
+                        <p style="margin: 5px 0 0 0; color: #4dabf7; font-size: 0.95rem;">
+                            Add multiple leave periods below
+                        </p>
+                    </div>
+                    <div class="cluster-badge">CLUSTER</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
         
-        if leave_type != "Early Exit":
-            st.markdown(f"""
-                <div class="metric-card floating-element">
-                    <div style="font-size: 0.9rem; color: #6b46c1; font-weight: 500;">Leave Duration</div>
-                    <div style="font-size: 2.5rem; font-weight: 700; color: #553c9a; margin: 10px 0;">
-                        {no_of_days}
-                    </div>
-                    <div style="font-size: 0.9rem; color: #805ad5;">
-                        {'working days' if leave_type == 'Full Day' else 'half day'}
-                    </div>
-                    <div style="font-size: 0.8rem; color: #9c27b0; margin-top: 5px;">
-                        {'' if leave_type == 'Half Day' else '(Sundays excluded)'}
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-                <div class="thumbsup-box floating-element">
-                    <div class="thumbsup-emoji">👍</div>
-                    <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">Early Exit Request</div>
-                    <div style="font-size: 0.95rem;">
-                        You're requesting to leave early from work today. Only 2 Early Leaves are Permitted per month.
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+        # Display all clusters
+        total_clusters = len(st.session_state.clusters)
+        
+        for i, cluster in enumerate(st.session_state.clusters):
+            st.markdown(f"<h4 style='color: #339af0;'>Period {i+1}</h4>", unsafe_allow_html=True)
+            
+            col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+            
+            with col1:
+                leave_type = st.selectbox(
+                    f"Leave Type - Period {i+1}",
+                    ["Select Type", "Full Day", "Half Day", "Early Exit"],
+                    index=0 if cluster['leave_type'] == 'Select Type' else ["Select Type", "Full Day", "Half Day", "Early Exit"].index(cluster['leave_type']),
+                    key=f"leave_type_cluster_{i}"
+                )
+                
+                # Update cluster data
+                st.session_state.clusters[i]['leave_type'] = leave_type
+            
+            with col2:
+                # For Half Day and Early Exit, dates must be same
+                if leave_type in ["Half Day", "Early Exit"]:
+                    date_value = cluster['from_date']
+                    selected_date = st.date_input(
+                        f"Date - Period {i+1}",
+                        value=date_value,
+                        min_value=datetime.now().date(),
+                        key=f"date_cluster_{i}"
+                    )
+                    st.session_state.clusters[i]['from_date'] = selected_date
+                    st.session_state.clusters[i]['till_date'] = selected_date
+                else:
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        from_date = st.date_input(
+                            f"From - Period {i+1}",
+                            value=cluster['from_date'],
+                            min_value=datetime.now().date(),
+                            key=f"from_date_cluster_{i}"
+                        )
+                        st.session_state.clusters[i]['from_date'] = from_date
+                    
+                    with col_b:
+                        till_date = st.date_input(
+                            f"To - Period {i+1}",
+                            value=cluster['till_date'],
+                            min_value=datetime.now().date(),
+                            key=f"till_date_cluster_{i}"
+                        )
+                        st.session_state.clusters[i]['till_date'] = till_date
+            
+            with col3:
+                # Calculate days for this cluster
+                if leave_type != "Select Type":
+                    no_of_days = calculate_days(
+                        st.session_state.clusters[i]['from_date'],
+                        st.session_state.clusters[i]['till_date'],
+                        leave_type
+                    )
+                    
+                    if leave_type == "Early Exit":
+                        days_display = "N/A"
+                    elif leave_type == "Half Day":
+                        days_display = "0.5"
+                    else:
+                        days_display = str(no_of_days)
+                    
+                    st.markdown(f"""
+                        <div style="background: #e3f2fd; padding: 10px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.8rem; color: #1976d2;">Days</div>
+                            <div style="font-size: 1.2rem; font-weight: bold; color: #0d47a1;">{days_display}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+            
+            with col4:
+                if total_clusters > 1:
+                    if st.button("❌ Remove", key=f"remove_cluster_{i}"):
+                        st.session_state.clusters.pop(i)
+                        st.rerun()
+        
+        # Add new cluster button
+        if st.button("➕ Add Another Period", key="add_cluster"):
+            new_cluster_number = len(st.session_state.clusters) + 1
+            st.session_state.clusters.append({
+                'cluster_number': new_cluster_number,
+                'leave_type': 'Select Type',
+                'from_date': datetime.now().date(),
+                'till_date': datetime.now().date(),
+                'is_early_leave': False,
+                'is_half_day': False
+            })
+            st.rerun()
+        
+        # Calculate total days for all clusters
+        total_days = 0
+        for cluster in st.session_state.clusters:
+            if cluster['leave_type'] == "Full Day":
+                days = calculate_working_days(cluster['from_date'], cluster['till_date'])
+                total_days += days
+            elif cluster['leave_type'] == "Half Day":
+                total_days += 0.5
+        
+        # Display total days
+        st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%); 
+                        color: white; padding: 1rem; border-radius: 12px; text-align: center; margin: 1rem 0;">
+                <div style="font-size: 0.9rem;">Total Working Days</div>
+                <div style="font-size: 2rem; font-weight: bold;">{total_days}</div>
+                <div style="font-size: 0.8rem;">across {len(st.session_state.clusters)} period(s)</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
     else:
-        no_of_days = "N/A"
+        # SINGLE HOLIDAY SECTION (Non-cluster)
+        st.markdown("""
+            <div style="margin-top: 2rem;">
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
+                    <div>
+                        <h3 style="margin: 0;">Leave Details</h3>
+                        <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
+                            Enter your leave period details
+                        </p>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2 = st.columns([1, 1], gap="large")
+        
+        with col1:
+            leave_type = st.selectbox(
+                "📋 Leave Type",
+                ["Select Type", "Full Day", "Half Day", "Early Exit"],
+                index=0,
+                help="Select the type of leave you are requesting",
+                key="leave_type_single"
+            )
+        
+        with col2:
+            if leave_type in ["Half Day", "Early Exit"]:
+                # For Half Day and Early Exit, only one date
+                date_value = st.session_state.clusters[0]['from_date']
+                selected_date = st.date_input(
+                    "📅 Date",
+                    value=date_value,
+                    min_value=datetime.now().date(),
+                    help="Select the date for your leave",
+                    key="date_single"
+                )
+                from_date = selected_date
+                till_date = selected_date
+            else:
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    from_date_value = st.session_state.clusters[0]['from_date']
+                    from_date = st.date_input(
+                        "📅 Start Date",
+                        value=from_date_value,
+                        min_value=datetime.now().date(),
+                        help="Select the first day of your leave",
+                        key="from_date_single"
+                    )
+                
+                with col_b:
+                    till_date_value = st.session_state.clusters[0]['till_date']
+                    till_date = st.date_input(
+                        "📅 End Date",
+                        value=till_date_value,
+                        min_value=datetime.now().date(),
+                        help="Select the last day of your leave",
+                        key="till_date_single"
+                    )
+        
+        # Update session state for single holiday
+        st.session_state.clusters[0]['leave_type'] = leave_type
+        st.session_state.clusters[0]['from_date'] = from_date
+        st.session_state.clusters[0]['till_date'] = till_date
+        
+        # Calculate and display days
+        if leave_type != "Select Type":
+            no_of_days = calculate_days(from_date, till_date, leave_type)
+            
+            if leave_type == "Early Exit":
+                st.markdown(f"""
+                    <div class="thumbsup-box floating-element">
+                        <div class="thumbsup-emoji">👍</div>
+                        <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">Early Exit Request</div>
+                        <div style="font-size: 0.95rem;">
+                            You're requesting to leave early from work today. Only 2 Early Leaves are Permitted per month.
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+            elif leave_type == "Half Day":
+                st.markdown(f"""
+                    <div class="metric-card floating-element">
+                        <div style="font-size: 0.9rem; color: #6b46c1; font-weight: 500;">Leave Duration</div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #553c9a; margin: 10px 0;">
+                            0.5
+                        </div>
+                        <div style="font-size: 0.9rem; color: #805ad5;">
+                            half day
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                    <div class="metric-card floating-element">
+                        <div style="font-size: 0.9rem; color: #6b46c1; font-weight: 500;">Leave Duration</div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #553c9a; margin: 10px 0;">
+                            {no_of_days}
+                        </div>
+                        <div style="font-size: 0.9rem; color: #805ad5;">
+                            working days
+                        </div>
+                        <div style="font-size: 0.8rem; color: #9c27b0; margin-top: 5px;">
+                            (Sundays excluded)
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
     
     # Purpose Section
     st.markdown("""
@@ -2023,36 +2255,34 @@ with tab1:
         if submit_button:
             # VALIDATION CHECKS
             validation_passed = True
-            error_message = ""
+            error_messages = []
             
-            # Check all required fields
+            # Check basic required fields
             if not all([employee_name, employee_code, department != "Select Department", 
-                        leave_type != "Select Type", purpose, superior_name != "Select Manager"]):
+                        purpose, superior_name != "Select Manager"]):
                 validation_passed = False
-                error_message = "Please complete all required fields"
+                error_messages.append("Please complete all required fields")
             
-            # Check date validity
-            elif from_date > till_date:
-                validation_passed = False
-                error_message = "End date must be after or equal to start date"
-            
-            # Special check for Half Day leave
-            elif leave_type == "Half Day" and from_date != till_date:
-                validation_passed = False
-                error_message = "For Half Day leave, start date and end date must be the same"
+            # Validate clusters
+            for i, cluster in enumerate(st.session_state.clusters):
+                if cluster['leave_type'] == "Select Type":
+                    validation_passed = False
+                    error_messages.append(f"Please select leave type for Period {i+1}")
+                    break
+                
+                # Check date validity for Full Day
+                if cluster['leave_type'] == "Full Day":
+                    if cluster['from_date'] > cluster['till_date']:
+                        validation_passed = False
+                        error_messages.append(f"End date must be after or equal to start date for Period {i+1}")
+                        break
             
             if not validation_passed:
-                st.markdown(f'''
-                    <div class="error-message">
-                        <div style="display: flex; align-items: center; justify-content: center;">
-                            <div style="font-size: 1.5rem; margin-right: 10px;">⚠️</div>
-                            <div>
-                                <strong>{error_message}</strong><br>
-                                Please correct the error and try again
-                            </div>
-                        </div>
-                    </div>
-                ''', unsafe_allow_html=True)
+                error_html = "<div class='error-message'><div style='display: flex; align-items: center; justify-content: center;'><div style='font-size: 1.5rem; margin-right: 10px;'>⚠️</div><div><strong>Validation Error</strong><br>"
+                for error in error_messages:
+                    error_html += f"{error}<br>"
+                error_html += "</div></div></div>"
+                st.markdown(error_html, unsafe_allow_html=True)
             else:
                 with st.spinner('Submitting your application...'):
                     # Prepare data
@@ -2060,44 +2290,47 @@ with tab1:
                     superior_email = SUPERIORS[superior_name]
                     approval_password = generate_approval_password()
                     
-                    # Prepare leave details
-                    leave_details = {
-                        "employee_name": employee_name,
-                        "employee_code": employee_code,
-                        "department": department,
-                        "leave_type": leave_type,
-                        "no_of_days": no_of_days,
-                        "purpose": purpose,
-                        "from_date": from_date.strftime("%Y-%m-%d"),
-                        "till_date": till_date.strftime("%Y-%m-%d")
-                    }
-                    
                     # Connect to Google Sheets
                     sheet = setup_google_sheets()
                     
                     if sheet:
                         try:
-                            # Prepare row data
-                            row_data = [
-                                submission_date,
-                                employee_name,
-                                employee_code,
-                                department,
-                                leave_type,
-                                str(no_of_days),
-                                purpose,
-                                leave_details['from_date'],
-                                leave_details['till_date'],
-                                superior_name,
-                                superior_email,
-                                "Pending",
-                                "",  # Approval Date (empty initially)
-                                approval_password
-                            ]
-                            
-                            # Write to Google Sheets
-                            sheet.append_row(row_data)
-                            log_debug(f"Data written to Google Sheets for {employee_name}")
+                            # Submit each cluster as separate row
+                            for cluster in st.session_state.clusters:
+                                # Prepare leave details
+                                leave_details = {
+                                    "employee_name": employee_name,
+                                    "employee_code": employee_code,
+                                    "department": department,
+                                    "leave_type": cluster['leave_type'],
+                                    "no_of_days": calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type']),
+                                    "purpose": purpose,
+                                    "from_date": cluster['from_date'].strftime("%Y-%m-%d"),
+                                    "till_date": cluster['till_date'].strftime("%Y-%m-%d")
+                                }
+                                
+                                # Prepare row data
+                                row_data = [
+                                    submission_date,
+                                    employee_name,
+                                    employee_code,
+                                    department,
+                                    cluster['leave_type'],
+                                    str(leave_details['no_of_days']),
+                                    purpose,
+                                    leave_details['from_date'],
+                                    leave_details['till_date'],
+                                    superior_name,
+                                    superior_email,
+                                    "Pending",
+                                    "",  # Approval Date (empty initially)
+                                    approval_password,
+                                    "Yes" if is_cluster and len(st.session_state.clusters) > 1 else "No"
+                                ]
+                                
+                                # Write to Google Sheets
+                                sheet.append_row(row_data)
+                                log_debug(f"Data written to Google Sheets for {employee_name} - {cluster['leave_type']}")
                             
                             # Try to send email only if configuration is working
                             email_sent = False
@@ -2105,6 +2338,19 @@ with tab1:
                             
                             if email_config["configured"]:
                                 try:
+                                    # Use first cluster for email details
+                                    first_cluster = st.session_state.clusters[0]
+                                    leave_details = {
+                                        "employee_name": employee_name,
+                                        "employee_code": employee_code,
+                                        "department": department,
+                                        "leave_type": f"Cluster ({len(st.session_state.clusters)} periods)" if is_cluster else first_cluster['leave_type'],
+                                        "no_of_days": "Multiple" if is_cluster else calculate_days(first_cluster['from_date'], first_cluster['till_date'], first_cluster['leave_type']),
+                                        "purpose": purpose,
+                                        "from_date": first_cluster['from_date'].strftime("%Y-%m-%d"),
+                                        "till_date": st.session_state.clusters[-1]['till_date'].strftime("%Y-%m-%d") if is_cluster else first_cluster['till_date'].strftime("%Y-%m-%d")
+                                    }
+                                    
                                     email_sent = send_approval_email(
                                         employee_name,
                                         superior_name,
