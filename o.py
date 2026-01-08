@@ -2422,38 +2422,13 @@ with tab3:
         </div>
     """, unsafe_allow_html=True)
     
-    # Holiday Legend
-    st.markdown("""
-        <div class="holiday-legend">
-            <div class="legend-item">
-                <div class="legend-color national-holiday"></div>
-                <span>National Holiday</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color religious-holiday"></div>
-                <span>Religious Holiday</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color regional-holiday"></div>
-                <span>Regional Holiday</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color seasonal-holiday"></div>
-                <span>Seasonal Holiday</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+   
     
     # Holiday Cards Grid
     st.markdown('<div class="holiday-grid">', unsafe_allow_html=True)
     
     # Get holiday type color mapping
-    type_colors = {
-        "national": "national-holiday",
-        "religious": "religious-holiday", 
-        "regional": "regional-holiday",
-        "seasonal": "seasonal-holiday"
-    }
+   
     
     for holiday in HOLIDAYS_2025:
         # Determine color based on type
@@ -2484,16 +2459,7 @@ with tab3:
                     border-left: 5px solid #2196f3;">
             <div style="display: flex; align-items: flex-start;">
                 <div style="font-size: 2rem; margin-right: 15px; color: #2196f3;">📌</div>
-                <div>
-                    <h4 style="margin: 0 0 1rem 0; color: #0d47a1;">Important Holiday Guidelines</h4>
-                    <ul style="color: #1565c0; margin: 0; padding-left: 20px;">
-                        <li>All employees are entitled to paid leave on company holidays</li>
-                        <li>Holidays falling on weekends may be compensated as per company policy</li>
-                        <li>Emergency services and essential staff schedules may vary</li>
-                        <li>Additional regional holidays may be applicable based on location</li>
-                        <li>Please plan your personal leave requests accordingly</li>
-                    </ul>
-                </div>
+                
             </div>
         </div>
     """, unsafe_allow_html=True)
