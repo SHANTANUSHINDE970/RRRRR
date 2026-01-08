@@ -21,7 +21,7 @@ st.set_page_config(
     page_title="VOLAR FASHION - Leave Management",
     page_icon="✨",
     layout="wide",
-    initial_sidebar_state="expanded"  # Changed to expanded to show sidebar by default
+    initial_sidebar_state="collapsed"
 )
 
 # Beautiful Elegant CSS with Premium Design - DARK MODE COMPATIBLE
@@ -773,168 +773,191 @@ st.markdown("""
         to { opacity: 0; transform: translateY(-20px); }
     }
     
-    /* Holiday table styles */
+    /* Holidays Table Styles */
+    .holidays-table-container {
+        background: var(--card-bg);
+        border-radius: 24px;
+        padding: 2.5rem;
+        box-shadow: 0 20px 60px var(--shadow-color);
+        border: 1px solid rgba(103, 58, 183, 0.1);
+        margin: 2rem auto;
+        max-width: 1000px;
+    }
+    
+    .holidays-table-container:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #673ab7, #2196f3);
+        border-radius: 24px 24px 0 0;
+    }
+    
     .holiday-card {
-        background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+        background: linear-gradient(135deg, var(--card-bg) 0%, var(--bg-tertiary) 100%);
         border-radius: 16px;
         padding: 1.5rem;
         margin: 1rem 0;
-        border: 1px solid rgba(156, 39, 176, 0.2);
-        box-shadow: 0 8px 25px rgba(156, 39, 176, 0.1);
+        border-left: 5px solid;
+        border-color: var(--primary-color);
         transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
     }
     
     .holiday-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 30px rgba(156, 39, 176, 0.15);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(103, 58, 183, 0.15);
     }
     
-    .holiday-icon {
-        font-size: 2rem;
-        margin-bottom: 1rem;
-        text-align: center;
+    .holiday-card:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(103, 58, 183, 0.05) 0%, rgba(33, 150, 243, 0.05) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .holiday-card:hover:before {
+        opacity: 1;
     }
     
     .holiday-date {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #6b46c1;
-        margin-bottom: 5px;
-    }
-    
-    .holiday-day {
-        font-size: 0.9rem;
-        color: #718096;
-        margin-bottom: 8px;
-    }
-    
-    .holiday-name {
         font-size: 1.3rem;
-        font-weight: 600;
-        color: #553c9a;
-        margin-bottom: 10px;
-    }
-    
-    .holiday-row {
-        display: flex;
-        align-items: center;
-        padding: 12px 15px;
-        margin: 8px 0;
-        background: rgba(255, 255, 255, 0.7);
-        border-radius: 12px;
-        border-left: 4px solid;
-        transition: all 0.3s ease;
-    }
-    
-    .holiday-row:hover {
-        background: white;
-        transform: translateX(5px);
-    }
-    
-    .holiday-icon-small {
-        font-size: 1.5rem;
-        width: 50px;
-        text-align: center;
-        margin-right: 15px;
-    }
-    
-    .holiday-details {
-        flex: 1;
-    }
-    
-    .holiday-date-small {
-        font-weight: 600;
-        color: #6b46c1;
-        font-size: 1rem;
-    }
-    
-    .holiday-name-small {
-        font-weight: 500;
-        color: #4a5568;
-        font-size: 0.9rem;
-    }
-    
-    /* Logo container */
-    .logo-container {
-        text-align: center;
-        padding: 1rem 0;
-        margin-bottom: 1.5rem;
-        background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
-        border-radius: 16px;
-        border: 1px solid rgba(103, 58, 183, 0.1);
-        box-shadow: 0 5px 15px rgba(103, 58, 183, 0.08);
-    }
-    
-    .logo-container img {
-        max-width: 180px;
-        height: auto;
-        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
-        transition: transform 0.3s ease;
-    }
-    
-    .logo-container img:hover {
-        transform: scale(1.05);
-    }
-    
-    /* Calendar icon colors */
-    .calendar-icon {
-        color: #f44336;
-    }
-    
-    .flag-icon {
-        color: #2196f3;
-    }
-    
-    .festival-icon {
-        color: #ff9800;
-    }
-    
-    .culture-icon {
-        color: #4caf50;
-    }
-    
-    .religion-icon {
-        color: #9c27b0;
-    }
-    
-    /* Section headers in sidebar */
-    .sidebar-section {
-        margin: 1.5rem 0;
-        padding-top: 1rem;
-        border-top: 2px solid var(--border-color);
-    }
-    
-    .sidebar-section-title {
-        font-size: 1rem;
-        font-weight: 600;
+        font-weight: 700;
         color: var(--primary-color);
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
     }
     
-    .sidebar-section-title i {
+    .holiday-date:before {
+        content: '📅';
         margin-right: 10px;
         font-size: 1.2rem;
     }
+    
+    .holiday-name {
+        font-size: 1.6rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .holiday-day {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        padding: 0.3rem 1rem;
+        background: linear-gradient(135deg, var(--accent-color) 0%, #03a9f4 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        border-radius: 20px;
+        display: inline-block;
+        margin-bottom: 1rem;
+    }
+    
+    .calendar-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        margin-right: 1.5rem;
+        flex-shrink: 0;
+    }
+    
+    .holiday-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .holiday-badge {
+        background: linear-gradient(135deg, #673ab7 0%, #2196f3 100%);
+        color: white;
+        padding: 0.3rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        display: inline-block;
+        margin-top: 0.5rem;
+    }
+    
+    .holiday-count {
+        text-align: center;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3rem;
+        font-weight: 700;
+        margin: 2rem 0;
+    }
+    
+    .holiday-legend {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+    
+    .legend-color {
+        width: 15px;
+        height: 15px;
+        border-radius: 4px;
+    }
+    
+    .public-holiday {
+        background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
+    }
+    
+    .religious-holiday {
+        background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);
+    }
+    
+    .national-holiday {
+        background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+    }
+    
+    .seasonal-holiday {
+        background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .holiday-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .holiday-card {
+            padding: 1.2rem;
+        }
+    }
     </style>
 """, unsafe_allow_html=True)
-
-# Holiday data with corresponding icons
-HOLIDAYS = [
-    {"date": "01-Jan", "day": "Thursday", "holiday": "New Year", "icon": "🎆", "color": "calendar-icon"},
-    {"date": "26-Jan", "day": "Monday", "holiday": "Republic Day", "icon": "🇮🇳", "color": "flag-icon"},
-    {"date": "04-Mar", "day": "Wednesday", "holiday": "Holi", "icon": "🎨", "color": "festival-icon"},
-    {"date": "20-Mar", "day": "Friday", "holiday": "Ramzan Eid", "icon": "🕌", "color": "religion-icon"},
-    {"date": "01-May", "day": "Friday", "holiday": "Maharashtra Day", "icon": "🏛️", "color": "culture-icon"},
-    {"date": "15-Aug", "day": "Saturday", "holiday": "Independence Day", "icon": "🇮🇳", "color": "flag-icon"},
-    {"date": "14-Sep", "day": "Monday", "holiday": "Ganesh Chaturthi", "icon": "🐘", "color": "festival-icon"},
-    {"date": "02-Oct", "day": "Friday", "holiday": "Gandhi Jayanti", "icon": "🕊️", "color": "calendar-icon"},
-    {"date": "21-Oct", "day": "Wednesday", "holiday": "Vijaydashmi", "icon": "⚔️", "color": "festival-icon"},
-    {"date": "08-Nov", "day": "Sunday", "holiday": "Diwali", "icon": "🪔", "color": "festival-icon"},
-    {"date": "11-Nov", "day": "Wednesday", "holiday": "Bhai Dooj", "icon": "💝", "color": "festival-icon"},
-    {"date": "25-Dec", "day": "Friday", "holiday": "Christmas", "icon": "🎄", "color": "religion-icon"}
-]
 
 # Superior details dictionary
 SUPERIORS = {
@@ -949,24 +972,41 @@ SUPERIORS = {
     "Rajeev Thakur": "Rajeev@vfemails.com",
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
+    
 }
 
 # Department options
 DEPARTMENTS = [
-    "Accounts and Finance",
-    "Administration",
-    "Business Development",
-    "Content",
-    "E-Commerce",
-    "Factory & Production",
-    "Graphics",
-    "Human Resources",
-    "IT",
-    "Social Media",
-    "Bandra Store",
-    "Support Staff",
-    "Warehouse",
-    "SEO"
+"Accounts and Finance",
+"Administration",
+"Business Development",
+"Content",
+"E-Commerce",
+"Factory & Production",
+"Graphics",
+"Human Resources",
+"IT",
+"Social Media",
+"Bandra Store",
+"Support Staff",
+"Warehouse",
+"SEO"
+]
+
+# Holidays data
+HOLIDAYS_2025 = [
+    {"date": "01-Jan", "day": "Thursday", "holiday": "New Year", "type": "national"},
+    {"date": "26-Jan", "day": "Monday", "holiday": "Republic Day", "type": "national"},
+    {"date": "04-Mar", "day": "Wednesday", "holiday": "Holi", "type": "religious"},
+    {"date": "20-Mar", "day": "Friday", "holiday": "Ramzan Eid", "type": "religious"},
+    {"date": "01-May", "day": "Friday", "holiday": "Maharashtra Day", "type": "regional"},
+    {"date": "15-Aug", "day": "Saturday", "holiday": "Independence Day", "type": "national"},
+    {"date": "14-Sep", "day": "Monday", "holiday": "Ganesh Chaturthi", "type": "religious"},
+    {"date": "02-Oct", "day": "Friday", "holiday": "Gandhi Jayanti", "type": "national"},
+    {"date": "21-Oct", "day": "Wednesday", "holiday": "Vijaydashmi", "type": "religious"},
+    {"date": "08-Nov", "day": "Sunday", "holiday": "Diwali", "type": "religious"},
+    {"date": "11-Nov", "day": "Wednesday", "holiday": "Bhai Dooj", "type": "religious"},
+    {"date": "25-Dec", "day": "Friday", "holiday": "Christmas", "type": "religious"}
 ]
 
 # Initialize session state for form reset
@@ -1000,10 +1040,6 @@ if 'email_config_status' not in st.session_state:
     st.session_state.email_config_status = "Not Tested"
 if 'debug_logs' not in st.session_state:
     st.session_state.debug_logs = []
-if 'form_submitted' not in st.session_state:
-    st.session_state.form_submitted = False
-if 'current_year' not in st.session_state:
-    st.session_state.current_year = datetime.now().year
 
 def add_debug_log(message, level="INFO"):
     """Add debug log message"""
@@ -1019,6 +1055,7 @@ def add_debug_log(message, level="INFO"):
 def log_debug(message):
     """Log debug messages"""
     add_debug_log(message, "DEBUG")
+    st.sidebar.text(f"{datetime.now().strftime('%H:%M:%S')}: {message}")
 
 def generate_approval_password():
     """Generate a 5-digit alphanumeric password"""
@@ -1244,7 +1281,7 @@ def check_email_configuration():
         "password_length": len(sender_password),
         "message": f"✅ Email credentials found ({password_type})"
     }
-
+    
 def create_smtp_connection(sender_email, sender_password):
     """Create and return SMTP connection with multiple fallback methods"""
     server = None
@@ -1610,83 +1647,53 @@ def update_leave_status(sheet, approval_password, status):
         log_debug(f"Update error: {traceback.format_exc()}")
         return False
 
-def reset_form():
-    """Reset form data to empty values"""
-    st.session_state.form_data_tab1 = {
-        'employee_name': '',
-        'employee_code': '',
-        'department': 'Select Department',
-        'leave_type': 'Select Type',
-        'from_date': datetime.now().date(),
-        'till_date': datetime.now().date(),
-        'purpose': '',
-        'superior_name': 'Select Manager'
-    }
-    st.session_state.reset_form_tab1 = True
-    st.session_state.form_submitted = False
+# JavaScript for copying to clipboard
+copy_js = """
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        var successElement = document.getElementById('copy-success');
+        if (successElement) {
+            successElement.style.display = 'block';
+            setTimeout(function() {
+                successElement.style.display = 'none';
+            }, 2000);
+        }
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
+</script>
+"""
+
+st.markdown(copy_js, unsafe_allow_html=True)
 
 # ============================================
-# SIDEBAR - COMPANY LOGO & HOLIDAY CALENDAR
+# SIDEBAR - EMAIL TESTING & CONFIGURATION
 # ============================================
+st.sidebar.title("🔧 Configuration Panel")
 
-# Add Company Logo to Sidebar
-with st.sidebar:
-    # Company Logo
-    st.markdown("""
-        <div class="logo-container">
-            <img src="https://volarfashion.in/images/logo.png" alt="VOLAR FASHION Logo">
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Holiday Calendar Section
-    st.markdown("""
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">
-                <i>📅</i>
-                <span>Holiday Calendar {} </span>
-            </div>
-        </div>
-    """.format(st.session_state.current_year), unsafe_allow_html=True)
-    
-    # Display holidays in a beautiful format
-    for holiday in HOLIDAYS:
-        st.markdown(f"""
-            <div class="holiday-row">
-                <div class="holiday-icon-small {holiday['color']}">
-                    {holiday['icon']}
-                </div>
-                <div class="holiday-details">
-                    <div class="holiday-date-small">{holiday['date']} • {holiday['day']}</div>
-                    <div class="holiday-name-small">{holiday['holiday']}</div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Configuration Panel
-    st.markdown("### 🔧 Configuration Panel")
-    
-    # Check current email configuration
-    email_config = check_email_configuration()
-    
-    # Display current email status
-    st.markdown("#### 📧 Email Configuration")
-    if email_config["configured"]:
-        st.success(email_config["message"])
-        st.info(f"**Sender:** {email_config['sender_email']}")
-        if 'password_type' in email_config:
-            st.info(f"**Password Type:** {email_config['password_type']}")
-        if 'password_length' in email_config:
-            st.info(f"**Password Length:** {email_config['password_length']} chars")
-        st.info(f"**Source:** {email_config['source']}")
-    else:
-        st.error(email_config["message"])
-        st.info(email_config["details"])
-    
-    # Test Google Sheets connection
-    st.markdown("---")
-    if st.button("🔗 Test Google Sheets Connection"):
+# Check current email configuration
+email_config = check_email_configuration()
+
+# Display current email status
+st.sidebar.markdown("### 📧 Email Configuration")
+if email_config["configured"]:
+    st.sidebar.success(email_config["message"])
+    st.sidebar.info(f"**Sender:** {email_config['sender_email']}")
+    if 'password_type' in email_config:
+        st.sidebar.info(f"**Password Type:** {email_config['password_type']}")
+    if 'password_length' in email_config:
+        st.sidebar.info(f"**Password Length:** {email_config['password_length']} chars")
+    st.sidebar.info(f"**Source:** {email_config['source']}")
+else:
+    st.sidebar.error(email_config["message"])
+    st.sidebar.info(email_config["details"])
+
+# Test Google Sheets connection
+st.sidebar.markdown("---")
+if st.sidebar.button("🔗 Test Google Sheets Connection"):
+    with st.sidebar:
         with st.spinner("Testing connection..."):
             sheet = setup_google_sheets()
             if sheet:
@@ -1695,109 +1702,108 @@ with st.sidebar:
                 st.info(f"Rows: {sheet.row_count}")
             else:
                 st.error("❌ Connection failed")
+
+# Email Testing Section
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📧 Test Email Configuration")
+
+# Show test email input
+test_recipient = st.sidebar.text_input(
+    "Test Recipient Email",
+    value="",
+    placeholder="Enter email to send test to",
+    help="Leave empty to send test to yourself"
+)
+
+col1, col2 = st.sidebar.columns(2)
+with col1:
+    if st.button("🚀 Send Test Email", key="test_email_btn", use_container_width=True):
+        with st.spinner("Sending test email..."):
+            result = test_email_connection(test_recipient)
+            st.session_state.test_email_result = result
+            
+            if result["success"]:
+                st.session_state.email_config_status = "Working"
+                st.sidebar.success("✅ Test email sent successfully!")
+            else:
+                st.session_state.email_config_status = "Failed"
+                st.sidebar.error("❌ Test email failed")
+
+with col2:
+    if st.button("🔄 Clear Logs", key="clear_logs", use_container_width=True):
+        st.session_state.debug_logs = []
+
+# Show last test result if available
+if st.session_state.test_email_result:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📋 Last Test Result")
+    if st.session_state.test_email_result["success"]:
+        st.sidebar.success("✅ Last test: SUCCESS")
+        st.sidebar.info(f"**Method:** {st.session_state.test_email_result.get('method', 'Unknown')}")
+    else:
+        st.sidebar.error("❌ Last test: FAILED")
+        with st.sidebar.expander("View Error Details"):
+            st.error(st.session_state.test_email_result.get('message', 'No error message'))
+            st.info(st.session_state.test_email_result.get('details', 'No details'))
+
+# Debug Logs Section
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📝 Debug Logs")
+if st.sidebar.checkbox("Show Debug Logs", value=False):
+    if st.session_state.debug_logs:
+        debug_logs_html = "<div class='debug-log'>"
+        for log in reversed(st.session_state.debug_logs[-10:]):  # Show last 10 logs
+            if "ERROR" in log:
+                debug_logs_html += f"<div style='color: #dc3545;'>{log}</div>"
+            elif "SUCCESS" in log or "INFO" in log:
+                debug_logs_html += f"<div style='color: #28a745;'>{log}</div>"
+            elif "WARNING" in log:
+                debug_logs_html += f"<div style='color: #ffc107;'>{log}</div>"
+            else:
+                debug_logs_html += f"<div>{log}</div>"
+        debug_logs_html += "</div>"
+        st.sidebar.markdown(debug_logs_html, unsafe_allow_html=True)
+    else:
+        st.sidebar.info("No debug logs yet")
+
+# Email Configuration Help
+st.sidebar.markdown("---")
+with st.sidebar.expander("📖 Email Setup Guide"):
+    st.markdown("""
+    **Step-by-Step Gmail Configuration:**
     
-    # Email Testing Section
-    st.markdown("---")
-    st.markdown("#### 📧 Test Email Configuration")
+    1. **Enable 2-Step Verification:**
+       - Go to: https://myaccount.google.com/security
+       - Click "2-Step Verification"
+       - Follow prompts to enable it
     
-    # Show test email input
-    test_recipient = st.text_input(
-        "Test Recipient Email",
-        value="",
-        placeholder="Enter email to send test to",
-        help="Leave empty to send test to yourself",
-        key="test_recipient_input"
-    )
+    2. **Generate App Password:**
+       - Go to: https://myaccount.google.com/apppasswords
+       - Select "Mail" as app
+       - Select "Other (Custom name)" as device
+       - Name it "VOLAR FASHION Streamlit"
+       - Click "Generate"
+       - **Copy the 16-character password**
     
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🚀 Send Test Email", key="test_email_btn", use_container_width=True):
-            with st.spinner("Sending test email..."):
-                result = test_email_connection(test_recipient)
-                st.session_state.test_email_result = result
-                
-                if result["success"]:
-                    st.session_state.email_config_status = "Working"
-                    st.sidebar.success("✅ Test email sent successfully!")
-                else:
-                    st.session_state.email_config_status = "Failed"
-                    st.sidebar.error("❌ Test email failed")
+    3. **Update Streamlit Secrets:**
+       - In Streamlit Cloud, go to App Settings → Secrets
+       - Add this configuration:
+    ```toml
+    [EMAIL]
+    sender_email = "hrvolarfashion@gmail.com"
+    sender_password = "your-16-character-app-password"
+    ```
     
-    with col2:
-        if st.button("🔄 Clear Logs", key="clear_logs", use_container_width=True):
-            st.session_state.debug_logs = []
+    4. **Test Configuration:**
+       - Click "Send Test Email" in sidebar
+       - Check if test email is received
     
-    # Show last test result if available
-    if st.session_state.test_email_result:
-        st.markdown("---")
-        st.markdown("#### 📋 Last Test Result")
-        if st.session_state.test_email_result["success"]:
-            st.success("✅ Last test: SUCCESS")
-            st.info(f"**Method:** {st.session_state.test_email_result.get('method', 'Unknown')}")
-        else:
-            st.error("❌ Last test: FAILED")
-            with st.expander("View Error Details"):
-                st.error(st.session_state.test_email_result.get('message', 'No error message'))
-                st.info(st.session_state.test_email_result.get('details', 'No details'))
-    
-    # Debug Logs Section
-    st.markdown("---")
-    st.markdown("#### 📝 Debug Logs")
-    if st.checkbox("Show Debug Logs", value=False, key="debug_logs_checkbox"):
-        if st.session_state.debug_logs:
-            debug_logs_html = "<div class='debug-log'>"
-            for log in reversed(st.session_state.debug_logs[-10:]):  # Show last 10 logs
-                if "ERROR" in log:
-                    debug_logs_html += f"<div style='color: #dc3545;'>{log}</div>"
-                elif "SUCCESS" in log or "INFO" in log:
-                    debug_logs_html += f"<div style='color: #28a745;'>{log}</div>"
-                elif "WARNING" in log:
-                    debug_logs_html += f"<div style='color: #ffc107;'>{log}</div>"
-                else:
-                    debug_logs_html += f"<div>{log}</div>"
-            debug_logs_html += "</div>"
-            st.markdown(debug_logs_html, unsafe_allow_html=True)
-        else:
-            st.info("No debug logs yet")
-    
-    # Email Configuration Help
-    st.markdown("---")
-    with st.expander("📖 Email Setup Guide"):
-        st.markdown("""
-        **Step-by-Step Gmail Configuration:**
-        
-        1. **Enable 2-Step Verification:**
-           - Go to: https://myaccount.google.com/security
-           - Click "2-Step Verification"
-           - Follow prompts to enable it
-        
-        2. **Generate App Password:**
-           - Go to: https://myaccount.google.com/apppasswords
-           - Select "Mail" as app
-           - Select "Other (Custom name)" as device
-           - Name it "VOLAR FASHION Streamlit"
-           - Click "Generate"
-           - **Copy the 16-character password**
-        
-        3. **Update Streamlit Secrets:**
-           - In Streamlit Cloud, go to App Settings → Secrets
-           - Add this configuration:
-        ```toml
-        [EMAIL]
-        sender_email = "hrvolarfashion@gmail.com"
-        sender_password = "your-16-character-app-password"
-        ```
-        
-        4. **Test Configuration:**
-           - Click "Send Test Email" in sidebar
-           - Check if test email is received
-        
-        **Common Issues:**
-        - ❌ Using regular Gmail password → Use App Password
-        - ❌ 2-Step Verification not enabled → Enable it first
-        - ❌ Outdated password → Generate new App Password
-        - ❌ Network issues → Wait and retry
-        """)
+    **Common Issues:**
+    - ❌ Using regular Gmail password → Use App Password
+    - ❌ 2-Step Verification not enabled → Enable it first
+    - ❌ Outdated password → Generate new App Password
+    - ❌ Network issues → Wait and retry
+    """)
 
 # ============================================
 # MAIN APPLICATION
@@ -1811,8 +1817,8 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Create beautiful tabs
-tab1, tab2 = st.tabs(["📝 Submit Leave Application", "✅ Approval Portal"])
+# Create beautiful tabs - ADDED NEW HOLIDAYS TAB
+tab1, tab2, tab3 = st.tabs(["📝 Submit Leave Application", "✅ Approval Portal", "🎉 Company Holidays"])
 
 with tab1:
     # Email status warning at top of form
@@ -1865,7 +1871,17 @@ with tab1:
     
     # Reset form if flag is set
     if st.session_state.reset_form_tab1:
-        reset_form()
+        st.session_state.form_data_tab1 = {
+            'employee_name': '',
+            'employee_code': '',
+            'department': 'Select Department',
+            'leave_type': 'Select Type',
+            'from_date': datetime.now().date(),
+            'till_date': datetime.now().date(),
+            'purpose': '',
+            'superior_name': 'Select Manager'
+        }
+        st.session_state.reset_form_tab1 = False
     
     # Two-column layout
     col1, col2 = st.columns([1, 1], gap="large")
@@ -2106,8 +2122,8 @@ with tab1:
                                 ''', unsafe_allow_html=True)
                                 
                                 st.balloons()
-                                # Reset form data
-                                reset_form()
+                                # Set flag to reset form on next render
+                                st.session_state.reset_form_tab1 = True
                                 time.sleep(2)
                                 st.rerun()
                             else:
@@ -2182,8 +2198,8 @@ with tab1:
                                 """.format(approval_password), unsafe_allow_html=True)
                                 
                                 st.balloons()
-                                # Reset form data
-                                reset_form()
+                                # Set flag to reset form on next render
+                                st.session_state.reset_form_tab1 = True
                                 time.sleep(2)
                                 st.rerun()
                                 
@@ -2381,6 +2397,106 @@ with tab2:
                             </div>
                         </div>
                     ''', unsafe_allow_html=True)
+
+with tab3:
+    # Holidays Tab - Beautiful Design
+    st.markdown("""
+        <div class="section-header">
+            <div class="icon-badge" style="background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);">🎉</div>
+            <div>
+                <h3 style="margin: 0;">Company Holidays Calendar 2025</h3>
+                <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
+                    Plan your leaves and vacations with our complete holiday schedule
+                </p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Stats Counter
+    st.markdown(f"""
+        <div style="text-align: center; margin: 3rem 0;">
+            <div class="holiday-count">{len(HOLIDAYS_2025)}</div>
+            <div style="font-size: 1.2rem; color: #718096; font-weight: 500;">
+                Official Holidays in 2025
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Holiday Legend
+    st.markdown("""
+        <div class="holiday-legend">
+            <div class="legend-item">
+                <div class="legend-color national-holiday"></div>
+                <span>National Holiday</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color religious-holiday"></div>
+                <span>Religious Holiday</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color regional-holiday"></div>
+                <span>Regional Holiday</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color seasonal-holiday"></div>
+                <span>Seasonal Holiday</span>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Holiday Cards Grid
+    st.markdown('<div class="holiday-grid">', unsafe_allow_html=True)
+    
+    # Get holiday type color mapping
+    type_colors = {
+        "national": "national-holiday",
+        "religious": "religious-holiday", 
+        "regional": "regional-holiday",
+        "seasonal": "seasonal-holiday"
+    }
+    
+    for holiday in HOLIDAYS_2025:
+        # Determine color based on type
+        badge_color = type_colors.get(holiday["type"], "national-holiday")
+        
+        st.markdown(f"""
+            <div class="holiday-card">
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <div class="calendar-icon">📅</div>
+                    <div>
+                        <div class="holiday-date">{holiday["date"]}</div>
+                        <div class="holiday-day">{holiday["day"]}</div>
+                    </div>
+                </div>
+                <div class="holiday-name">{holiday["holiday"]}</div>
+                <div class="holiday-badge {badge_color}">
+                    {holiday["type"].title()} Holiday
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Important Notes
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
+                    padding: 2rem; border-radius: 20px; margin-top: 3rem; 
+                    border-left: 5px solid #2196f3;">
+            <div style="display: flex; align-items: flex-start;">
+                <div style="font-size: 2rem; margin-right: 15px; color: #2196f3;">📌</div>
+                <div>
+                    <h4 style="margin: 0 0 1rem 0; color: #0d47a1;">Important Holiday Guidelines</h4>
+                    <ul style="color: #1565c0; margin: 0; padding-left: 20px;">
+                        <li>All employees are entitled to paid leave on company holidays</li>
+                        <li>Holidays falling on weekends may be compensated as per company policy</li>
+                        <li>Emergency services and essential staff schedules may vary</li>
+                        <li>Additional regional holidays may be applicable based on location</li>
+                        <li>Please plan your personal leave requests accordingly</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 # Footer
 st.markdown("""
