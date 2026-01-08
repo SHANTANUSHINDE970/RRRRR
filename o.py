@@ -1029,7 +1029,7 @@ SUPERIORS = {
     "Rajeev Thakur": "Rajeev@vfemails.com",
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
-    "d":"shinde78617@gmai.com"
+    "d":"shinde78617@gmail.com"
     
 }
 
