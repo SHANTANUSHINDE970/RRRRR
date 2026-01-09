@@ -2896,17 +2896,26 @@ with tab3:
     # Display as a styled table using Streamlit's dataframe
     st.markdown("""
         <style>
+        .holiday-table-container {
+            display: flex;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+        
         .holiday-dataframe {
             background-color: var(--card-bg);
             border-radius: 12px;
             border: 1px solid var(--border-color);
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 800px;
         }
         
         .holiday-dataframe table {
             width: 100%;
             border-collapse: collapse;
+            margin: 0 auto;
         }
         
         .holiday-dataframe th {
@@ -2918,11 +2927,23 @@ with tab3:
             font-size: 1rem;
         }
         
+        .holiday-dataframe th:first-child {
+            border-top-left-radius: 0px;
+        }
+        
+        .holiday-dataframe th:last-child {
+            border-top-right-radius: 0px;
+        }
+        
         .holiday-dataframe td {
             padding: 1rem 1.5rem;
             font-size: 0.95rem;
             border-bottom: 1px solid var(--border-color);
             color: var(--text-primary);
+        }
+        
+        .holiday-dataframe tr:last-child td {
+            border-bottom: none;
         }
         
         .holiday-dataframe tr:nth-child(even) {
@@ -2958,6 +2979,22 @@ with tab3:
             color: #4caf50;
             border: 1px solid rgba(76, 175, 80, 0.2);
         }
+        
+        /* Column widths */
+        .holiday-dataframe td:nth-child(1),
+        .holiday-dataframe th:nth-child(1) {
+            width: 35%;
+        }
+        
+        .holiday-dataframe td:nth-child(2),
+        .holiday-dataframe th:nth-child(2) {
+            width: 30%;
+        }
+        
+        .holiday-dataframe td:nth-child(3),
+        .holiday-dataframe th:nth-child(3) {
+            width: 35%;
+        }
         </style>
     """, unsafe_allow_html=True)
     
@@ -2976,24 +3013,14 @@ with tab3:
     styled_df = df.copy()
     styled_df["📆 Day"] = styled_df["📆 Day"].apply(style_day)
     
-    # Display the styled table
+    # Display the styled table - CENTERED
+    st.markdown('<div class="holiday-table-container">', unsafe_allow_html=True)
     st.markdown('<div class="holiday-dataframe">', unsafe_allow_html=True)
     st.markdown(styled_df.to_html(escape=False, index=False), unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    # Add a simple footer note
-    st.markdown("""
-        <div style="text-align: center; margin-top: 2rem; padding: 1.5rem; 
-                    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
-                    border-radius: 12px; border: 1px solid rgba(156, 39, 176, 0.1);">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <span style="font-size: 1.5rem;">✨</span>
-                <span style="font-weight: 500; color: #6b46c1;">
-                    All dates are subject to change as per company policy
-                </span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+
 # Footer
 st.markdown("""
     <div class="footer">
