@@ -15,6 +15,7 @@ import traceback
 import ssl
 from email.utils import formataddr
 import socket
+import uuid
 
 # Page configuration
 st.set_page_config(
@@ -1115,6 +1116,8 @@ if 'email_config_status' not in st.session_state:
     st.session_state.email_config_status = "Not Tested"
 if 'debug_logs' not in st.session_state:
     st.session_state.debug_logs = []
+if 'generated_codes' not in st.session_state:
+    st.session_state.generated_codes = set()
 
 def add_debug_log(message, level="INFO"):
     """Add debug log message"""
@@ -1132,14 +1135,95 @@ def log_debug(message):
     add_debug_log(message, "DEBUG")
     st.sidebar.text(f"{datetime.now().strftime('%H:%M:%S')}: {message}")
 
-def generate_approval_password():
-    """Generate a unique 5-digit alphanumeric password"""
+def get_existing_codes_from_sheet(sheet):
+    """Get all existing approval codes from Google Sheets"""
+    try:
+        if not sheet:
+            return set()
+        
+        all_records = sheet.get_all_values()
+        existing_codes = set()
+        
+        for idx, row in enumerate(all_records):
+            if idx == 0:  # Skip header
+                continue
+            if len(row) > 13 and row[13]:  # Column 14 is approval code
+                existing_codes.add(row[13])
+        
+        log_debug(f"Found {len(existing_codes)} existing codes in sheet")
+        return existing_codes
+        
+    except Exception as e:
+        log_debug(f"Error getting existing codes: {str(e)}")
+        return set()
+
+def generate_approval_password(sheet=None):
+    """Generate a UNIQUE 5-digit alphanumeric password"""
+    
+    # Get alphabet without confusing characters
     alphabet = string.ascii_uppercase + string.digits
-    # Remove confusing characters (0, O, 1, I, L)
     alphabet = alphabet.replace('0', '').replace('O', '').replace('1', '').replace('I', '').replace('L', '')
-    password = ''.join(secrets.choice(alphabet) for _ in range(5))
-    log_debug(f"Generated approval password: {password}")
-    return password
+    
+    # Get existing codes
+    existing_codes = set()
+    if sheet:
+        existing_codes = get_existing_codes_from_sheet(sheet)
+    # Also check session state generated codes
+    existing_codes.update(st.session_state.generated_codes)
+    
+    max_attempts = 20  # Prevent infinite loop
+    for attempt in range(max_attempts):
+        # Generate random code
+        password = ''.join(secrets.choice(alphabet) for _ in range(5))
+        
+        # Check if code is unique
+        if password not in existing_codes:
+            st.session_state.generated_codes.add(password)
+            log_debug(f"Generated unique approval password: {password} (attempt {attempt + 1})")
+            return password
+    
+    # If we couldn't generate a unique random code after max attempts
+    # Use timestamp-based fallback method
+    log_debug(f"Could not generate unique random code after {max_attempts} attempts, using fallback method")
+    
+    # Fallback: Use timestamp + random suffix
+    timestamp = int(time.time() * 1000)  # Milliseconds
+    base36 = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+    
+    # Convert timestamp to base-36
+    code = ""
+    temp_timestamp = timestamp
+    while temp_timestamp > 0 and len(code) < 3:
+        temp_timestamp, remainder = divmod(temp_timestamp, 36)
+        code = base36[remainder] + code
+    
+    # Add random characters to make 5 characters
+    while len(code) < 5:
+        code = code + secrets.choice(base36)
+    
+    # Ensure uniqueness by checking again
+    if code not in existing_codes:
+        st.session_state.generated_codes.add(code)
+        log_debug(f"Generated fallback unique code: {code}")
+        return code
+    else:
+        # Last resort: add incremental number
+        for i in range(1, 100):
+            fallback_code = f"{code[:4]}{i}"
+            if fallback_code not in existing_codes:
+                st.session_state.generated_codes.add(fallback_code)
+                log_debug(f"Generated incremental fallback code: {fallback_code}")
+                return fallback_code
+    
+    # Absolute last resort (should never happen)
+    final_code = str(uuid.uuid4().int)[:5].upper()
+    final_code = ''.join([c for c in final_code if c in alphabet])
+    while len(final_code) < 5:
+        final_code = final_code + secrets.choice(alphabet)
+    
+    st.session_state.generated_codes.add(final_code)
+    log_debug(f"Generated UUID-based fallback code: {final_code}")
+    return final_code
 
 def get_google_credentials():
     """Get Google credentials from Streamlit secrets"""
@@ -2383,16 +2467,19 @@ with tab1:
                     submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     superior_email = SUPERIORS[superior_name]
                     
-                    # Generate unique codes for each cluster
-                    cluster_codes = {}
-                    for i in range(len(st.session_state.clusters)):
-                        cluster_codes[i] = generate_approval_password()
-                    
-                    # Connect to Google Sheets
+                    # Connect to Google Sheets first
                     sheet = setup_google_sheets()
                     
                     if sheet:
                         try:
+                            # Generate unique codes for each cluster (WITH DUPLICATE CHECKING)
+                            cluster_codes = {}
+                            for i in range(len(st.session_state.clusters)):
+                                # Generate code with duplicate checking
+                                code = generate_approval_password(sheet)
+                                cluster_codes[i] = code
+                                log_debug(f"Generated unique code for period {i+1}: {code}")
+                            
                             # Submit each cluster as separate row
                             for i, cluster in enumerate(st.session_state.clusters):
                                 # Prepare leave details
@@ -2476,6 +2563,8 @@ with tab1:
                                 ''', unsafe_allow_html=True)
                                 
                                 st.balloons()
+                                # Clear generated codes for this session
+                                st.session_state.generated_codes.clear()
                                 # Set flag to reset form on next render
                                 st.session_state.reset_form_tab1 = True
                                 time.sleep(2)
@@ -2564,6 +2653,8 @@ with tab1:
                                 """, unsafe_allow_html=True)
                                 
                                 st.balloons()
+                                # Clear generated codes for this session
+                                st.session_state.generated_codes.clear()
                                 # Set flag to reset form on next render
                                 st.session_state.reset_form_tab1 = True
                                 time.sleep(2)
