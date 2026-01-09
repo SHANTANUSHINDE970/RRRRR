@@ -2855,8 +2855,10 @@ with tab2:
                         </div>
                     ''', unsafe_allow_html=True)
 
+# Replace the entire "with tab3:" section with this improved version:
+
 with tab3:
-    # SIMPLE HOLIDAYS TAB - CLEAN DESIGN
+    # ENHANCED HOLIDAYS TAB WITH TABULAR FORMAT
     st.markdown("""
         <div class="section-header">
             <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
@@ -2869,7 +2871,7 @@ with tab3:
         </div>
     """, unsafe_allow_html=True)
     
-    # Simple holiday count
+    # Beautiful summary card
     st.markdown(f"""
         <div style="text-align: center; margin: 2rem 0; padding: 1.5rem; background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%); border-radius: 16px; color: white;">
             <div style="font-size: 2.5rem; font-weight: 700;">{len(HOLIDAYS_2026)}</div>
@@ -2877,20 +2879,228 @@ with tab3:
         </div>
     """, unsafe_allow_html=True)
     
-    # Simple Holiday Cards Grid
-    st.markdown('<div class="holiday-grid">', unsafe_allow_html=True)
+    # Create a DataFrame for the holidays
+    holidays_df = pd.DataFrame(HOLIDAYS_2026)
     
-    for holiday in HOLIDAYS_2026:
+    # Add year to the dates and convert to proper datetime format
+    def format_holiday_date(date_str):
+        day_month = date_str.split("-")
+        return f"{day_month[0]}-{day_month[1]}-2026"
+    
+    holidays_df['full_date'] = holidays_df['date'].apply(format_holiday_date)
+    holidays_df['Date'] = pd.to_datetime(holidays_df['full_date'], format='%d-%b-%Y').dt.strftime('%d %b %Y')
+    holidays_df = holidays_df[['Date', 'day', 'holiday']].rename(columns={'day': 'Day', 'holiday': 'Holiday'})
+    
+    # Apply custom styling to the DataFrame
+    def highlight_rows(row):
+        colors = {
+            'background-color': ['#f8f9ff' if i % 2 == 0 else '#f0f2ff' for i in range(len(row))],
+            'color': '#1a1a1a',
+            'font-weight': '500',
+            'border-bottom': '1px solid #e2e8f0'
+        }
+        return colors
+    
+    # Create a styled table with CSS
+    st.markdown("""
+        <style>
+        .holidays-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        .holidays-table th {
+            background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
+            color: white;
+            font-weight: 600;
+            padding: 1rem;
+            text-align: left;
+            font-size: 1rem;
+        }
+        
+        .holidays-table td {
+            padding: 1rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .holidays-table tr:nth-child(even) {
+            background-color: #f8f9ff;
+        }
+        
+        .holidays-table tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+        
+        .holidays-table tr:hover {
+            background-color: #eef2ff;
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(103, 58, 183, 0.1);
+        }
+        
+        .holiday-date-badge {
+            background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+        
+        .holiday-day-badge {
+            background: rgba(76, 175, 80, 0.1);
+            color: #2e7d32;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+        
+        .holiday-name {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .holidays-table {
+                font-size: 0.9rem;
+            }
+            
+            .holidays-table th,
+            .holidays-table td {
+                padding: 0.75rem;
+            }
+        }
+        
+        /* Dark mode compatibility */
+        @media (prefers-color-scheme: dark) {
+            .holidays-table tr:nth-child(even) {
+                background-color: #2d3748;
+            }
+            
+            .holidays-table tr:nth-child(odd) {
+                background-color: #1a202c;
+            }
+            
+            .holidays-table td {
+                color: #e2e8f0;
+                border-bottom: 1px solid #4a5568;
+            }
+            
+            .holiday-name {
+                color: #ffffff;
+            }
+            
+            .holidays-table tr:hover {
+                background-color: #4a5568;
+            }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Display the table with custom HTML
+    st.markdown("""
+        <div style="background: var(--card-bg); border-radius: 20px; padding: 0; overflow: hidden; 
+                    margin: 2rem 0; border: 1px solid var(--border-color);">
+            <table class="holidays-table">
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">📅 Date</th>
+                        <th style="width: 20%;">📆 Day</th>
+                        <th style="width: 50%;">🎉 Holiday</th>
+                    </tr>
+                </thead>
+                <tbody>
+    """, unsafe_allow_html=True)
+    
+    for _, row in holidays_df.iterrows():
         st.markdown(f"""
-            <div class="holiday-card">
-                <div class="holiday-date">{holiday["date"]}</div>
-                <div class="holiday-day">{holiday["day"]}</div>
-                <div class="holiday-name">{holiday["holiday"]}</div>
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-weight: 600; color: var(--primary-color);">{row['Date']}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="holiday-day-badge">{row['Day']}</div>
+                </td>
+                <td>
+                    <div class="holiday-name">{row['Holiday']}</div>
+                </td>
+            </tr>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("""
+                </tbody>
+            </table>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Add some statistics
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 12px; text-align: center; 
+                        border: 1px solid var(--border-color);">
+                <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 0.5rem;">Total Holidays</div>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--primary-color);">12</div>
             </div>
         """, unsafe_allow_html=True)
     
-    st.markdown('</div>', unsafe_allow_html=True)
-
+    with col2:
+        # Count weekends
+        weekend_holidays = len([h for h in HOLIDAYS_2026 if h['day'] in ['Saturday', 'Sunday']])
+        st.markdown(f"""
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 12px; text-align: center; 
+                        border: 1px solid var(--border-color);">
+                <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 0.5rem;">Weekend Holidays</div>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--accent-color);">{weekend_holidays}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        # Count weekdays
+        weekday_holidays = len([h for h in HOLIDAYS_2026 if h['day'] not in ['Saturday', 'Sunday']])
+        st.markdown(f"""
+            <div style="background: var(--card-bg); padding: 1.5rem; border-radius: 12px; text-align: center; 
+                        border: 1px solid var(--border-color);">
+                <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 0.5rem;">Weekday Holidays</div>
+                <div style="font-size: 2rem; font-weight: 700; color: var(--secondary-color);">{weekday_holidays}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    # Download option
+    st.markdown("---")
+    st.markdown("""
+        <div style="text-align: center; padding: 1.5rem; background: var(--card-bg); border-radius: 12px; 
+                    margin: 2rem 0; border: 1px solid var(--border-color);">
+            <h4 style="margin-top: 0; color: var(--text-primary);">📥 Download Holiday Calendar</h4>
+            <p style="color: var(--text-light); margin-bottom: 1rem;">
+                Download the complete holiday list for your planning
+            </p>
+    """, unsafe_allow_html=True)
+    
+    # Convert to CSV for download
+    csv = holidays_df.to_csv(index=False).encode('utf-8')
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.download_button(
+            label="📄 Download as CSV",
+            data=csv,
+            file_name="volar_fashion_holidays_2026.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
 # Footer
 st.markdown("""
     <div class="footer">
