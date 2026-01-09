@@ -2867,7 +2867,7 @@ with tab3:
         </div>
     """, unsafe_allow_html=True)
     
-    # Holiday count card - SIMPLIFIED
+    # Holiday count card
     st.markdown(f"""
         <div style="text-align: center; margin: 2rem 0; padding: 1.5rem; 
                     background: var(--card-bg); border-radius: 16px; 
@@ -2882,57 +2882,55 @@ with tab3:
         </div>
     """, unsafe_allow_html=True)
     
-    # SIMPLE, CLEAN HOLIDAY TABLE WITH PROPER ALIGNMENT
+    # Create a DataFrame for the holidays
+    holidays_data = []
+    for holiday in HOLIDAYS_2026:
+        day_month = holiday["date"].split("-")
+        date_str = f"{day_month[0]} {day_month[1]} 2026"
+        holidays_data.append({
+            "📅 Date": date_str,
+            "📆 Day": holiday["day"],
+            "🎉 Holiday": holiday["holiday"]
+        })
+    
+    # Display as a styled table using Streamlit's dataframe
     st.markdown("""
         <style>
-        .clean-holiday-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 2rem 0;
-            background: var(--card-bg);
+        .holiday-dataframe {
+            background-color: var(--card-bg);
             border-radius: 12px;
+            border: 1px solid var(--border-color);
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         }
         
-        .clean-holiday-table th {
+        .holiday-dataframe table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .holiday-dataframe th {
             background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
             color: white;
             font-weight: 600;
             padding: 1rem 1.5rem;
             text-align: left;
             font-size: 1rem;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
         }
         
-        .clean-holiday-table td {
+        .holiday-dataframe td {
             padding: 1rem 1.5rem;
             font-size: 0.95rem;
             border-bottom: 1px solid var(--border-color);
-            vertical-align: middle;
+            color: var(--text-primary);
         }
         
-        .clean-holiday-table tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .clean-holiday-table tr:hover {
+        .holiday-dataframe tr:nth-child(even) {
             background-color: rgba(103, 58, 183, 0.05);
         }
         
-        .date-cell {
-            font-weight: 600;
-            color: var(--text-primary);
-            min-width: 120px;
-        }
-        
-        .day-cell {
-            min-width: 100px;
-        }
-        
-        .holiday-cell {
-            font-weight: 500;
-            color: var(--text-primary);
+        .holiday-dataframe tr:hover {
+            background-color: rgba(103, 58, 183, 0.1);
         }
         
         .day-badge {
@@ -2946,79 +2944,42 @@ with tab3:
         .saturday {
             background: rgba(33, 150, 243, 0.1);
             color: #2196f3;
+            border: 1px solid rgba(33, 150, 243, 0.2);
         }
         
         .sunday {
             background: rgba(244, 67, 54, 0.1);
             color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.2);
         }
         
         .weekday {
             background: rgba(76, 175, 80, 0.1);
             color: #4caf50;
-        }
-        
-        @media (max-width: 768px) {
-            .clean-holiday-table {
-                font-size: 0.9rem;
-            }
-            
-            .clean-holiday-table th,
-            .clean-holiday-table td {
-                padding: 0.75rem 1rem;
-            }
+            border: 1px solid rgba(76, 175, 80, 0.2);
         }
         </style>
     """, unsafe_allow_html=True)
     
-    # Create the table with proper alignment
-    table_html = """
-    <div style="background: var(--card-bg); border-radius: 12px; overflow: hidden; 
-                border: 1px solid var(--border-color); margin: 2rem 0;">
-        <table class="clean-holiday-table">
-            <thead>
-                <tr>
-                    <th style="width: 40%;">📅 Date</th>
-                    <th style="width: 25%;">📆 Day</th>
-                    <th style="width: 35%;">🎉 Holiday</th>
-                </tr>
-            </thead>
-            <tbody>
-    """
+    # Create and display the dataframe
+    df = pd.DataFrame(holidays_data)
     
-    # Process holidays for display
-    for holiday in HOLIDAYS_2026:
-        # Format date properly
-        day_month = holiday["date"].split("-")
-        date_str = f"{day_month[0]} {day_month[1]} 2026"
-        
-        # Determine day class for styling
-        day = holiday["day"]
-        if day == "Saturday":
-            day_class = "saturday"
-        elif day == "Sunday":
-            day_class = "sunday"
+    # Apply day badge styling
+    def style_day(val):
+        if val == "Saturday":
+            return f'<span class="day-badge saturday">{val}</span>'
+        elif val == "Sunday":
+            return f'<span class="day-badge sunday">{val}</span>'
         else:
-            day_class = "weekday"
-        
-        # Add row to table
-        table_html += f"""
-            <tr>
-                <td class="date-cell">{date_str}</td>
-                <td class="day-cell">
-                    <span class="day-badge {day_class}">{day}</span>
-                </td>
-                <td class="holiday-cell">{holiday["holiday"]}</td>
-            </tr>
-        """
+            return f'<span class="day-badge weekday">{val}</span>'
     
-    table_html += """
-            </tbody>
-        </table>
-    </div>
-    """
+    styled_df = df.copy()
+    styled_df["📆 Day"] = styled_df["📆 Day"].apply(style_day)
     
-    st.markdown(table_html, unsafe_allow_html=True)
+    # Display the styled table
+    st.markdown('<div class="holiday-dataframe">', unsafe_allow_html=True)
+    st.markdown(styled_df.to_html(escape=False, index=False), unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Add a simple footer note
     st.markdown("""
@@ -3033,7 +2994,6 @@ with tab3:
             </div>
         </div>
     """, unsafe_allow_html=True)
-
 # Footer
 st.markdown("""
     <div class="footer">
