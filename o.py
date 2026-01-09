@@ -2854,17 +2854,18 @@ with tab2:
                     ''', unsafe_allow_html=True)
 
 with tab3:
-    # CLEAN HOLIDAYS TAB WITH PROPER ALIGNMENT
+    # HOLIDAYS TAB WITH PROPERLY CENTERED TABLE
     st.markdown("""
-        <div class="section-header">
-            <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
-            <div>
-                <h3 style="margin: 0;">Company Holidays 2026</h3>
-                <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
-                    Plan your leaves with our official holiday calendar
-                </p>
+        <div class="holidays-table-container">
+            <div class="section-header">
+                <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
+                <div>
+                    <h3 style="margin: 0;">Company Holidays 2026</h3>
+                    <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
+                        Plan your leaves with our official holiday calendar
+                    </p>
+                </div>
             </div>
-        </div>
     """, unsafe_allow_html=True)
     
     # Holiday count card
@@ -2896,64 +2897,76 @@ with tab3:
     # Display as a styled table using Streamlit's dataframe
     st.markdown("""
         <style>
-        .holiday-table-container {
+        /* Center the entire holiday table */
+        div[data-testid="stDataFrame"] {
             display: flex;
             justify-content: center;
-            margin: 2rem 0;
-        }
-        
-        .holiday-dataframe {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            width: 100%;
-            max-width: 800px;
-        }
-        
-        .holiday-dataframe table {
-            width: 100%;
-            border-collapse: collapse;
             margin: 0 auto;
         }
         
-        .holiday-dataframe th {
-            background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
-            color: white;
-            font-weight: 600;
-            padding: 1rem 1.5rem;
-            text-align: left;
-            font-size: 1rem;
+        /* Style the table container */
+        .stDataFrame {
+            width: 100% !important;
+            max-width: 800px !important;
+            margin: 0 auto !important;
         }
         
-        .holiday-dataframe th:first-child {
-            border-top-left-radius: 0px;
+        /* Style the actual table */
+        .stDataFrame table {
+            width: 100% !important;
+            background-color: var(--card-bg) !important;
+            border-radius: 12px !important;
+            border: 1px solid var(--border-color) !important;
+            overflow: hidden !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+            border-collapse: collapse !important;
+            margin: 0 auto !important;
         }
         
-        .holiday-dataframe th:last-child {
-            border-top-right-radius: 0px;
+        /* Style table headers */
+        .stDataFrame th {
+            background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%) !important;
+            color: white !important;
+            font-weight: 600 !important;
+            padding: 1rem 1.5rem !important;
+            text-align: left !important;
+            font-size: 1rem !important;
+            border: none !important;
         }
         
-        .holiday-dataframe td {
-            padding: 1rem 1.5rem;
-            font-size: 0.95rem;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
+        /* Style table cells */
+        .stDataFrame td {
+            padding: 1rem 1.5rem !important;
+            font-size: 0.95rem !important;
+            border-bottom: 1px solid var(--border-color) !important;
+            color: var(--text-primary) !important;
+            background-color: var(--card-bg) !important;
         }
         
-        .holiday-dataframe tr:last-child td {
-            border-bottom: none;
+        /* Remove last border */
+        .stDataFrame tr:last-child td {
+            border-bottom: none !important;
         }
         
-        .holiday-dataframe tr:nth-child(even) {
-            background-color: rgba(103, 58, 183, 0.05);
+        /* Zebra striping */
+        .stDataFrame tr:nth-child(even) {
+            background-color: rgba(103, 58, 183, 0.05) !important;
         }
         
-        .holiday-dataframe tr:hover {
-            background-color: rgba(103, 58, 183, 0.1);
+        .stDataFrame tr:nth-child(even) td {
+            background-color: rgba(103, 58, 183, 0.05) !important;
         }
         
+        /* Hover effect */
+        .stDataFrame tbody tr:hover {
+            background-color: rgba(103, 58, 183, 0.1) !important;
+        }
+        
+        .stDataFrame tbody tr:hover td {
+            background-color: rgba(103, 58, 183, 0.1) !important;
+        }
+        
+        /* Day badges */
         .day-badge {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -2980,45 +2993,36 @@ with tab3:
             border: 1px solid rgba(76, 175, 80, 0.2);
         }
         
-        /* Column widths */
-        .holiday-dataframe td:nth-child(1),
-        .holiday-dataframe th:nth-child(1) {
-            width: 35%;
-        }
-        
-        .holiday-dataframe td:nth-child(2),
-        .holiday-dataframe th:nth-child(2) {
-            width: 30%;
-        }
-        
-        .holiday-dataframe td:nth-child(3),
-        .holiday-dataframe th:nth-child(3) {
-            width: 35%;
+        /* Ensure the entire container is centered */
+        div[data-testid="stHorizontalBlock"] {
+            justify-content: center !important;
         }
         </style>
     """, unsafe_allow_html=True)
     
-    # Create and display the dataframe
+    # Create DataFrame
     df = pd.DataFrame(holidays_data)
     
-    # Apply day badge styling
-    def style_day(val):
-        if val == "Saturday":
-            return f'<span class="day-badge saturday">{val}</span>'
-        elif val == "Sunday":
-            return f'<span class="day-badge sunday">{val}</span>'
-        else:
-            return f'<span class="day-badge weekday">{val}</span>'
-    
-    styled_df = df.copy()
-    styled_df["📆 Day"] = styled_df["📆 Day"].apply(style_day)
-    
-    # Display the styled table - CENTERED
-    st.markdown('<div class="holiday-table-container">', unsafe_allow_html=True)
-    st.markdown('<div class="holiday-dataframe">', unsafe_allow_html=True)
-    st.markdown(styled_df.to_html(escape=False, index=False), unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Display the dataframe - This will now be centered
+    st.dataframe(
+        df,
+        use_container_width=False,
+        hide_index=True,
+        column_config={
+            "📅 Date": st.column_config.TextColumn(
+                "📅 Date",
+                width="medium",
+            ),
+            "📆 Day": st.column_config.TextColumn(
+                "📆 Day",
+                width="medium",
+            ),
+            "🎉 Holiday": st.column_config.TextColumn(
+                "🎉 Holiday",
+                width="large",
+            ),
+        }
+    )
     
     # Add a simple footer note
     st.markdown("""
@@ -3032,6 +3036,8 @@ with tab3:
                 </span>
             </div>
         </div>
+        
+        </div> <!-- Close holidays-table-container -->
     """, unsafe_allow_html=True)
 
 # Footer
