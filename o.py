@@ -2861,7 +2861,7 @@ with tab3:
             <div>
                 <h3 style="margin: 0;">Company Holidays 2026</h3>
               
-            </div>
+            
         </div>
     """, unsafe_allow_html=True)
     
