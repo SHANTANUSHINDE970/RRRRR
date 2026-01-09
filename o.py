@@ -2854,18 +2854,17 @@ with tab2:
                     ''', unsafe_allow_html=True)
 
 with tab3:
-    # HOLIDAYS TAB WITH PROPERLY CENTERED TABLE
+    # HOLIDAYS TAB WITH LEFT-ALIGNED HEADER AND CENTERED TABLE
     st.markdown("""
-        <div class="holidays-table-container">
-            <div class="section-header">
-                <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
-                <div>
-                    <h3 style="margin: 0;">Company Holidays 2026</h3>
-                    <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
-                        Plan your leaves with our official holiday calendar
-                    </p>
-                </div>
+        <div class="section-header">
+            <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
+            <div>
+                <h3 style="margin: 0;">Company Holidays 2026</h3>
+                <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
+                    Plan your leaves with our official holiday calendar
+                </p>
             </div>
+        </div>
     """, unsafe_allow_html=True)
     
     # Holiday count card
@@ -2889,157 +2888,248 @@ with tab3:
         day_month = holiday["date"].split("-")
         date_str = f"{day_month[0]} {day_month[1]} 2026"
         holidays_data.append({
-            "📅 Date": date_str,
-            "📆 Day": holiday["day"],
-            "🎉 Holiday": holiday["holiday"]
+            "Date": date_str,
+            "Day": holiday["day"],
+            "Holiday": holiday["holiday"]
         })
     
-    # Display as a styled table using Streamlit's dataframe
+    # Custom CSS for the holiday table
     st.markdown("""
         <style>
-        /* Center the entire holiday table */
-        div[data-testid="stDataFrame"] {
+        /* Center only the table container */
+        .centered-table-container {
             display: flex;
             justify-content: center;
+            margin: 2rem 0;
+            width: 100%;
+        }
+        
+        /* Table styling */
+        .holiday-table {
+            width: 100%;
+            max-width: 900px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            border-collapse: collapse;
             margin: 0 auto;
         }
         
-        /* Style the table container */
-        .stDataFrame {
-            width: 100% !important;
-            max-width: 800px !important;
-            margin: 0 auto !important;
+        /* Table headers with gradient background - works in both themes */
+        .holiday-table thead {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
         }
         
-        /* Style the actual table */
-        .stDataFrame table {
-            width: 100% !important;
-            background-color: var(--card-bg) !important;
-            border-radius: 12px !important;
-            border: 1px solid var(--border-color) !important;
-            overflow: hidden !important;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
-            border-collapse: collapse !important;
-            margin: 0 auto !important;
-        }
-        
-        /* Style table headers */
-        .stDataFrame th {
-            background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%) !important;
+        .holiday-table th {
             color: white !important;
-            font-weight: 600 !important;
-            padding: 1rem 1.5rem !important;
-            text-align: left !important;
-            font-size: 1rem !important;
-            border: none !important;
+            font-weight: 600;
+            padding: 1rem 1.5rem;
+            text-align: left;
+            font-size: 1rem;
+            border: none;
+            font-family: 'Inter', sans-serif;
         }
         
-        /* Style table cells */
-        .stDataFrame td {
-            padding: 1rem 1.5rem !important;
-            font-size: 0.95rem !important;
-            border-bottom: 1px solid var(--border-color) !important;
-            color: var(--text-primary) !important;
-            background-color: var(--card-bg) !important;
+        /* Table cells */
+        .holiday-table td {
+            padding: 1rem 1.5rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
         }
         
         /* Remove last border */
-        .stDataFrame tr:last-child td {
-            border-bottom: none !important;
+        .holiday-table tbody tr:last-child td {
+            border-bottom: none;
         }
         
         /* Zebra striping */
-        .stDataFrame tr:nth-child(even) {
-            background-color: rgba(103, 58, 183, 0.05) !important;
-        }
-        
-        .stDataFrame tr:nth-child(even) td {
-            background-color: rgba(103, 58, 183, 0.05) !important;
+        .holiday-table tbody tr:nth-child(even) {
+            background-color: rgba(103, 58, 183, 0.05);
         }
         
         /* Hover effect */
-        .stDataFrame tbody tr:hover {
-            background-color: rgba(103, 58, 183, 0.1) !important;
+        .holiday-table tbody tr:hover {
+            background-color: rgba(103, 58, 183, 0.1);
+            transition: background-color 0.2s ease;
         }
         
-        .stDataFrame tbody tr:hover td {
-            background-color: rgba(103, 58, 183, 0.1) !important;
+        /* Day styling with emojis */
+        .date-cell {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        /* Day badges */
-        .day-badge {
+        .date-cell:before {
+            content: "📅";
+            font-size: 1.1rem;
+        }
+        
+        .day-cell {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 12px;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 500;
+            text-align: center;
+            min-width: 100px;
         }
         
         .saturday {
-            background: rgba(33, 150, 243, 0.1);
-            color: #2196f3;
-            border: 1px solid rgba(33, 150, 243, 0.2);
+            background: rgba(33, 150, 243, 0.15);
+            color: var(--accent-color);
+            border: 1px solid rgba(33, 150, 243, 0.3);
         }
         
         .sunday {
-            background: rgba(244, 67, 54, 0.1);
+            background: rgba(244, 67, 54, 0.15);
             color: #f44336;
-            border: 1px solid rgba(244, 67, 54, 0.2);
+            border: 1px solid rgba(244, 67, 54, 0.3);
         }
         
         .weekday {
-            background: rgba(76, 175, 80, 0.1);
-            color: #4caf50;
-            border: 1px solid rgba(76, 175, 80, 0.2);
+            background: rgba(76, 175, 80, 0.15);
+            color: var(--success-color);
+            border: 1px solid rgba(76, 175, 80, 0.3);
         }
         
-        /* Ensure the entire container is centered */
-        div[data-testid="stHorizontalBlock"] {
-            justify-content: center !important;
+        .holiday-cell {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .holiday-cell:before {
+            content: "🎉";
+            font-size: 1.1rem;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .holiday-table {
+                max-width: 95%;
+            }
+            
+            .holiday-table th,
+            .holiday-table td {
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .day-cell {
+                min-width: 80px;
+                padding: 0.3rem 0.8rem;
+            }
         }
         </style>
     """, unsafe_allow_html=True)
     
-    # Create DataFrame
-    df = pd.DataFrame(holidays_data)
+    # Create the HTML table manually for better control
+    html_table = """
+    <div class="centered-table-container">
+        <table class="holiday-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Holiday</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
     
-    # Display the dataframe - This will now be centered
-    st.dataframe(
-        df,
-        use_container_width=False,
-        hide_index=True,
-        column_config={
-            "📅 Date": st.column_config.TextColumn(
-                "📅 Date",
-                width="medium",
-            ),
-            "📆 Day": st.column_config.TextColumn(
-                "📆 Day",
-                width="medium",
-            ),
-            "🎉 Holiday": st.column_config.TextColumn(
-                "🎉 Holiday",
-                width="large",
-            ),
-        }
-    )
+    # Add rows to the table
+    for holiday in HOLIDAYS_2026:
+        day_month = holiday["date"].split("-")
+        date_str = f"{day_month[0]} {day_month[1]} 2026"
+        day = holiday["day"]
+        
+        # Determine day class
+        if day == "Saturday":
+            day_class = "saturday"
+        elif day == "Sunday":
+            day_class = "sunday"
+        else:
+            day_class = "weekday"
+        
+        html_table += f"""
+                <tr>
+                    <td><span class="date-cell">{date_str}</span></td>
+                    <td><span class="day-cell {day_class}">{day}</span></td>
+                    <td><span class="holiday-cell">{holiday["holiday"]}</span></td>
+                </tr>
+        """
     
-    # Add a simple footer note
+    html_table += """
+            </tbody>
+        </table>
+    </div>
+    """
+    
+    # Display the table
+    st.markdown(html_table, unsafe_allow_html=True)
+    
+    # Additional info section
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+            <div style="text-align: center; padding: 1rem; background: var(--card-bg); 
+                        border-radius: 12px; border: 1px solid var(--border-color); margin-top: 1rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+            <div style="font-weight: 600; color: var(--text-primary);">Public Holidays</div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">{}</div>
+            </div>
+        """.format(len([h for h in HOLIDAYS_2026 if h["day"] not in ["Saturday", "Sunday"]])), unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+            <div style="text-align: center; padding: 1rem; background: var(--card-bg); 
+                        border-radius: 12px; border: 1px solid var(--border-color); margin-top: 1rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏖️</div>
+            <div style="font-weight: 600; color: var(--text-primary);">Weekend Holidays</div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">{}</div>
+            </div>
+        """.format(len([h for h in HOLIDAYS_2026 if h["day"] in ["Saturday", "Sunday"]])), unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+            <div style="text-align: center; padding: 1rem; background: var(--card-bg); 
+                        border-radius: 12px; border: 1px solid var(--border-color); margin-top: 1rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
+            <div style="font-weight: 600; color: var(--text-primary);">Months Covered</div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">12 months</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    # Footer note
     st.markdown("""
-        <div style="text-align: center; margin-top: 2rem; padding: 1.5rem; 
-                    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
-                    border-radius: 12px; border: 1px solid rgba(156, 39, 176, 0.1);">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <span style="font-size: 1.5rem;">✨</span>
-                <span style="font-weight: 500; color: #6b46c1;">
-                    All dates are subject to change as per company policy
-                </span>
+        <div style="margin-top: 2rem; padding: 1.5rem; 
+                    background: linear-gradient(135deg, rgba(103, 58, 183, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%);
+                    border-radius: 12px; border: 1px solid rgba(103, 58, 183, 0.2);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.5rem; color: var(--primary-color);">ℹ️</span>
+                <div>
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                        Important Information
+                    </div>
+                    <div style="color: var(--text-secondary); font-size: 0.95rem;">
+                        • All holiday dates are as per company policy and are subject to change<br>
+                        • For any queries regarding holidays, please contact HR department<br>
+                        • Plan your leaves in advance considering project requirements
+                    </div>
+                </div>
             </div>
         </div>
-        
-        </div> <!-- Close holidays-table-container -->
     """, unsafe_allow_html=True)
-
 # Footer
 st.markdown("""
     <div class="footer">
