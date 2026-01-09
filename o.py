@@ -1041,8 +1041,6 @@ SUPERIORS = {
     "Rajeev Thakur": "Rajeev@vfemails.com",
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com"
-    
-    
 }
 
 # Department options
@@ -2855,8 +2853,6 @@ with tab2:
                         </div>
                     ''', unsafe_allow_html=True)
 
-# Replace the entire "with tab3:" section with this improved version:
-
 with tab3:
     # CLEAN HOLIDAYS TAB WITH PROPER ALIGNMENT
     st.markdown("""
@@ -3037,6 +3033,7 @@ with tab3:
             </div>
         </div>
     """, unsafe_allow_html=True)
+
 # Footer
 st.markdown("""
     <div class="footer">
