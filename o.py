@@ -2896,9 +2896,12 @@ with tab3:
     # Display as a styled table using Streamlit's dataframe
     st.markdown("""
         <style>
-        .holiday-table-container {
+        /* Centered table container */
+        .centered-table-container {
             display: flex;
             justify-content: center;
+            align-items: center;
+            width: 100%;
             margin: 2rem 0;
         }
         
@@ -2908,14 +2911,13 @@ with tab3:
             border: 1px solid var(--border-color);
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            width: 100%;
             max-width: 800px;
+            margin: 0 auto;
         }
         
         .holiday-dataframe table {
             width: 100%;
             border-collapse: collapse;
-            margin: 0 auto;
         }
         
         .holiday-dataframe th {
@@ -3014,7 +3016,7 @@ with tab3:
     styled_df["📆 Day"] = styled_df["📆 Day"].apply(style_day)
     
     # Display the styled table - CENTERED
-    st.markdown('<div class="holiday-table-container">', unsafe_allow_html=True)
+    st.markdown('<div class="centered-table-container">', unsafe_allow_html=True)
     st.markdown('<div class="holiday-dataframe">', unsafe_allow_html=True)
     st.markdown(styled_df.to_html(escape=False, index=False), unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -3033,7 +3035,6 @@ with tab3:
             </div>
         </div>
     """, unsafe_allow_html=True)
-
 # Footer
 st.markdown("""
     <div class="footer">
