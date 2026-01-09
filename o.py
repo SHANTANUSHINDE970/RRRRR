@@ -2860,9 +2860,7 @@ with tab3:
             <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
             <div>
                 <h3 style="margin: 0;">Company Holidays 2026</h3>
-                <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
-                    Plan your leaves with our official holiday calendar
-                </p>
+              
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -3005,19 +3003,7 @@ with tab3:
     # Display the centered table
     st.markdown(centered_table, unsafe_allow_html=True)
     
-    # Add a simple footer note
-    st.markdown("""
-        <div style="text-align: center; margin-top: 2rem; padding: 1.5rem; 
-                    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
-                    border-radius: 12px; border: 1px solid rgba(156, 39, 176, 0.1);">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <span style="font-size: 1.5rem;">✨</span>
-                <span style="font-weight: 500; color: #6b46c1;">
-                    All dates are subject to change as per company policy
-                </span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+
 # Footer
 st.markdown("""
     <div class="footer">
