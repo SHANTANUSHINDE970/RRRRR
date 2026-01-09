@@ -2888,7 +2888,7 @@ with tab3:
         .clean-holiday-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 2rem 0;
+            margin: 2rem auto;
             background: var(--card-bg);
             border-radius: 12px;
             overflow: hidden;
@@ -2900,7 +2900,7 @@ with tab3:
             color: white;
             font-weight: 600;
             padding: 1rem 1.5rem;
-            text-align: left;
+            text-align: center;
             font-size: 1rem;
             border-bottom: 2px solid rgba(255, 255, 255, 0.1);
         }
@@ -2910,6 +2910,7 @@ with tab3:
             font-size: 0.95rem;
             border-bottom: 1px solid var(--border-color);
             vertical-align: middle;
+            text-align: center;
         }
         
         .clean-holiday-table tr:last-child td {
@@ -2958,9 +2959,18 @@ with tab3:
             color: #4caf50;
         }
         
+        /* Center the table container */
+        .table-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin: 2rem 0;
+        }
+        
         @media (max-width: 768px) {
             .clean-holiday-table {
                 font-size: 0.9rem;
+                width: 95%;
             }
             
             .clean-holiday-table th,
@@ -2971,19 +2981,20 @@ with tab3:
         </style>
     """, unsafe_allow_html=True)
     
-    # Create the table with proper alignment
+    # Create the table with proper alignment and centering
     table_html = """
-    <div style="background: var(--card-bg); border-radius: 12px; overflow: hidden; 
-                border: 1px solid var(--border-color); margin: 2rem 0;">
-        <table class="clean-holiday-table">
-            <thead>
-                <tr>
-                    <th style="width: 40%;">📅 Date</th>
-                    <th style="width: 25%;">📆 Day</th>
-                    <th style="width: 35%;">🎉 Holiday</th>
-                </tr>
-            </thead>
-            <tbody>
+    <div class="table-container">
+        <div style="width: 100%; max-width: 1000px; background: var(--card-bg); 
+                    border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+            <table class="clean-holiday-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">📅 Date</th>
+                        <th style="width: 25%;">📆 Day</th>
+                        <th style="width: 35%;">🎉 Holiday</th>
+                    </tr>
+                </thead>
+                <tbody>
     """
     
     # Process holidays for display
@@ -3013,8 +3024,9 @@ with tab3:
         """
     
     table_html += """
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
     </div>
     """
     
