@@ -2896,66 +2896,54 @@ with tab3:
     # Display as a styled table using Streamlit's dataframe
     st.markdown("""
         <style>
-        /* Centered table container */
-        .centered-table-container {
+        /* Center the entire table */
+        .stDataFrame {
             display: flex;
             justify-content: center;
-            align-items: center;
+        }
+        
+        .holiday-table-container {
             width: 100%;
+            display: flex;
+            justify-content: center;
             margin: 2rem 0;
         }
         
-        .holiday-dataframe {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            max-width: 800px;
-            margin: 0 auto;
+        /* Style the dataframe */
+        [data-testid="stDataFrame"] {
+            border: 1px solid var(--border-color) !important;
+            border-radius: 12px !important;
+            overflow: hidden !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+            max-width: 800px !important;
         }
         
-        .holiday-dataframe table {
-            width: 100%;
-            border-collapse: collapse;
+        /* Style table headers */
+        [data-testid="stDataFrame"] th {
+            background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%) !important;
+            color: white !important;
+            font-weight: 600 !important;
+            padding: 1rem 1.5rem !important;
+            font-size: 1rem !important;
         }
         
-        .holiday-dataframe th {
-            background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%);
-            color: white;
-            font-weight: 600;
-            padding: 1rem 1.5rem;
-            text-align: left;
-            font-size: 1rem;
+        /* Style table cells */
+        [data-testid="stDataFrame"] td {
+            padding: 1rem 1.5rem !important;
+            font-size: 0.95rem !important;
+            color: var(--text-primary) !important;
         }
         
-        .holiday-dataframe th:first-child {
-            border-top-left-radius: 0px;
+        /* Add alternating row colors */
+        [data-testid="stDataFrame"] tbody tr:nth-child(even) {
+            background-color: rgba(103, 58, 183, 0.05) !important;
         }
         
-        .holiday-dataframe th:last-child {
-            border-top-right-radius: 0px;
+        [data-testid="stDataFrame"] tbody tr:hover {
+            background-color: rgba(103, 58, 183, 0.1) !important;
         }
         
-        .holiday-dataframe td {
-            padding: 1rem 1.5rem;
-            font-size: 0.95rem;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-        
-        .holiday-dataframe tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .holiday-dataframe tr:nth-child(even) {
-            background-color: rgba(103, 58, 183, 0.05);
-        }
-        
-        .holiday-dataframe tr:hover {
-            background-color: rgba(103, 58, 183, 0.1);
-        }
-        
+        /* Style for day badges */
         .day-badge {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -2981,46 +2969,55 @@ with tab3:
             color: #4caf50;
             border: 1px solid rgba(76, 175, 80, 0.2);
         }
-        
-        /* Column widths */
-        .holiday-dataframe td:nth-child(1),
-        .holiday-dataframe th:nth-child(1) {
-            width: 35%;
-        }
-        
-        .holiday-dataframe td:nth-child(2),
-        .holiday-dataframe th:nth-child(2) {
-            width: 30%;
-        }
-        
-        .holiday-dataframe td:nth-child(3),
-        .holiday-dataframe th:nth-child(3) {
-            width: 35%;
-        }
         </style>
     """, unsafe_allow_html=True)
     
-    # Create and display the dataframe
+    # Create the dataframe
     df = pd.DataFrame(holidays_data)
     
-    # Apply day badge styling
-    def style_day(val):
-        if val == "Saturday":
-            return f'<span class="day-badge saturday">{val}</span>'
-        elif val == "Sunday":
-            return f'<span class="day-badge sunday">{val}</span>'
+    # Apply day badge styling by modifying the Day column
+    def get_day_class(day):
+        if day == "Saturday":
+            return "saturday"
+        elif day == "Sunday":
+            return "sunday"
         else:
-            return f'<span class="day-badge weekday">{val}</span>'
+            return "weekday"
     
-    styled_df = df.copy()
-    styled_df["📆 Day"] = styled_df["📆 Day"].apply(style_day)
+    # Create HTML for the table
+    html_table = """
+    <div class="holiday-table-container">
+        <table style="border-collapse: collapse; width: 100%; max-width: 800px; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);">
+            <thead>
+                <tr style="background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%); color: white;">
+                    <th style="padding: 1rem 1.5rem; text-align: left; font-weight: 600; font-size: 1rem;">📅 Date</th>
+                    <th style="padding: 1rem 1.5rem; text-align: left; font-weight: 600; font-size: 1rem;">📆 Day</th>
+                    <th style="padding: 1rem 1.5rem; text-align: left; font-weight: 600; font-size: 1rem;">🎉 Holiday</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
     
-    # Display the styled table - CENTERED
-    st.markdown('<div class="centered-table-container">', unsafe_allow_html=True)
-    st.markdown('<div class="holiday-dataframe">', unsafe_allow_html=True)
-    st.markdown(styled_df.to_html(escape=False, index=False), unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    for index, row in df.iterrows():
+        day_class = get_day_class(row['📆 Day'])
+        html_table += f"""
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 1rem 1.5rem; color: var(--text-primary);">{row['📅 Date']}</td>
+                    <td style="padding: 1rem 1.5rem;">
+                        <span class="day-badge {day_class}">{row['📆 Day']}</span>
+                    </td>
+                    <td style="padding: 1rem 1.5rem; color: var(--text-primary); font-weight: 500;">{row['🎉 Holiday']}</td>
+                </tr>
+        """
+    
+    html_table += """
+            </tbody>
+        </table>
+    </div>
+    """
+    
+    # Display the centered HTML table
+    st.markdown(html_table, unsafe_allow_html=True)
     
     # Add a simple footer note
     st.markdown("""
