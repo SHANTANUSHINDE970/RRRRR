@@ -2308,10 +2308,10 @@ with tab1:
         st.markdown(f"""
             <div style="background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%); 
                         color: white; padding: 1rem; border-radius: 12px; text-align: center; margin: 1rem 0;">
-                <div style="font-size: 0.9rem;">Total Calendar Days</div>
+                <div style="font-size: 0.9rem;">Total Days</div>
                 <div style="font-size: 2rem; font-weight: bold;">{total_days}</div>
                 <div style="font-size: 0.8rem;">across {len(st.session_state.clusters)} period(s)</div>
-                <div style="font-size: 0.7rem; opacity: 0.9;">(including Sundays)</div>
+                
             </div>
         """, unsafe_allow_html=True)
     
