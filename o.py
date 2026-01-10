@@ -530,14 +530,27 @@ def check_email_configuration():
         return {"configured": False}
 
 def calculate_working_days(from_date, till_date):
-    """Calculate total days INCLUDING Sundays"""
-    if from_date > till_date:
+    """Calculate total calendar days between two dates (INCLUSIVE of both dates)"""
+    try:
+        # Ensure we have valid dates
+        if not from_date or not till_date:
+            return 0
+        
+        # If dates are in wrong order, swap them
+        if from_date > till_date:
+            from_date, till_date = till_date, from_date
+        
+        # Calculate the difference and add 1 to include both dates
+        # Example: Jan 1 to Jan 1 = 0 days difference + 1 = 1 day
+        # Example: Jan 1 to Jan 3 = 2 days difference + 1 = 3 days
+        delta = till_date - from_date
+        total_days = delta.days + 1
+        
+        return total_days
+        
+    except Exception as e:
+        add_debug_log(f"Error calculating days: {str(e)}")
         return 0
-    
-    # Simple difference + 1 to include both start and end dates
-    total_days = (till_date - from_date).days + 1
-    return total_days
-
 def calculate_days(from_date, till_date, leave_type):
     """Simple days calculation"""
     if leave_type == "Half Day":
