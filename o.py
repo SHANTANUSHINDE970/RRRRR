@@ -2311,7 +2311,7 @@ with tab1:
                 <div style="font-size: 0.9rem;">Total Days</div>
                 <div style="font-size: 2rem; font-weight: bold;">{total_days}</div>
                 <div style="font-size: 0.8rem;">across {len(st.session_state.clusters)} period(s)</div>
-                
+        
             </div>
         """, unsafe_allow_html=True)
     
@@ -3028,7 +3028,7 @@ st.markdown("""
         </div>
         <div style="font-size: 0.9rem;">
             📧 hrvolarfashion@gmail.com<br>
-            © 2026 VOLAR FASHION.
+            © 2024 VOLAR FASHION.
         </div>
     </div>
 """, unsafe_allow_html=True)
