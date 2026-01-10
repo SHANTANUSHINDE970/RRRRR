@@ -2375,7 +2375,7 @@ with tab1:
                         <div style="font-size: 0.9rem; color: #805ad5;">
                             working days
                         </div>
-                   
+                     
                     </div>
                 """, unsafe_allow_html=True)
     
