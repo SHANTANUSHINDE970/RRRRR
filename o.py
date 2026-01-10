@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 import pandas as pd
+import json
 import time
 import secrets
 import string
@@ -1042,26 +1043,26 @@ SUPERIORS = {
     "Sarath Kumar": "Sarath@vfemails.com"
 }
 
-# Department options as tuple for immutability
-DEPARTMENTS = (
-    "Accounts and Finance",
-    "Administration",
-    "Business Development",
-    "Content",
-    "E-Commerce",
-    "Factory & Production",
-    "Graphics",
-    "Human Resources",
-    "IT",
-    "Social Media",
-    "Bandra Store",
-    "Support Staff",
-    "Warehouse",
-    "SEO"
-)
+# Department options
+DEPARTMENTS = [
+"Accounts and Finance",
+"Administration",
+"Business Development",
+"Content",
+"E-Commerce",
+"Factory & Production",
+"Graphics",
+"Human Resources",
+"IT",
+"Social Media",
+"Bandra Store",
+"Support Staff",
+"Warehouse",
+"SEO"
+]
 
-# Holidays data - SIMPLIFIED as tuple for immutability
-HOLIDAYS_2026 = (
+# Holidays data - SIMPLIFIED
+HOLIDAYS_2026 = [
     {"date": "01-Jan", "day": "Thursday", "holiday": "New Year"},
     {"date": "26-Jan", "day": "Monday", "holiday": "Republic Day"},
     {"date": "04-Mar", "day": "Wednesday", "holiday": "Holi"},
@@ -1074,7 +1075,7 @@ HOLIDAYS_2026 = (
     {"date": "08-Nov", "day": "Sunday", "holiday": "Diwali"},
     {"date": "11-Nov", "day": "Wednesday", "holiday": "Bhai Dooj"},
     {"date": "25-Dec", "day": "Friday", "holiday": "Christmas"}
-)
+]
 
 # Initialize session state
 if 'clusters' not in st.session_state:
@@ -1115,35 +1116,22 @@ if 'debug_logs' not in st.session_state:
     st.session_state.debug_logs = []
 if 'generated_codes' not in st.session_state:
     st.session_state.generated_codes = set()
-if 'used_approval_codes' not in st.session_state:  # NEW: Track used codes
-    st.session_state.used_approval_codes = set()
-
-@st.cache_data(ttl=300)  # Cache for 5 minutes
-def get_cached_holidays_data():
-    """Get cached holidays data"""
-    holidays_data = []
-    for holiday in HOLIDAYS_2026:
-        day_month = holiday["date"].split("-")
-        date_str = f"{day_month[0]} {day_month[1]} 2026"
-        holidays_data.append({
-            "📅 Date": date_str,
-            "📆 Day": holiday["day"],
-            "🎉 Holiday": holiday["holiday"]
-        })
-    return pd.DataFrame(holidays_data)
 
 def add_debug_log(message, level="INFO"):
     """Add debug log message"""
     timestamp = datetime.now().strftime('%H:%M:%S')
     log_entry = f"[{timestamp}] [{level}] {message}"
     st.session_state.debug_logs.append(log_entry)
-    # Keep only last 50 logs efficiently
+    # Keep only last 50 logs
     if len(st.session_state.debug_logs) > 50:
-        st.session_state.debug_logs = st.session_state.debug_logs[-50:]
+        st.session_state.debug_logs.pop(0)
+    # Print to console for debugging
+    print(f"[{level}] {message}")
 
 def log_debug(message):
     """Log debug messages"""
     add_debug_log(message, "DEBUG")
+    st.sidebar.text(f"{datetime.now().strftime('%H:%M:%S')}: {message}")
 
 def get_existing_codes_from_sheet(sheet):
     """Get all existing approval codes from Google Sheets"""
@@ -1167,87 +1155,67 @@ def get_existing_codes_from_sheet(sheet):
         log_debug(f"Error getting existing codes: {str(e)}")
         return set()
 
-def check_code_is_used(sheet, code):
-    """Check if approval code has already been used (approved/rejected)"""
-    try:
-        # First check session state cache
-        if code in st.session_state.used_approval_codes:
-            log_debug(f"Code {code} found in session state used codes")
-            return True
-        
-        # Check in Google Sheet
-        all_records = sheet.get_all_values()
-        
-        for idx, row in enumerate(all_records):
-            if idx == 0:  # Skip header
-                continue
-            
-            if len(row) > 13 and row[13] == code:
-                # Check if status is already approved or rejected
-                if len(row) > 11 and row[11] in ["Approved", "Rejected"]:
-                    st.session_state.used_approval_codes.add(code)
-                    log_debug(f"Code {code} is already {row[11]} in sheet")
-                    return True
-                break
-        
-        return False
-        
-    except Exception as e:
-        log_debug(f"Error checking code status: {str(e)}")
-        # If error, assume used to be safe
-        return True
-
 def generate_approval_password(sheet=None):
-    """Generate a UNIQUE 5-digit alphanumeric password that's not already in use"""
+    """Generate a UNIQUE 5-digit alphanumeric password"""
     
     # Get alphabet without confusing characters
     alphabet = string.ascii_uppercase + string.digits
-    alphabet = ''.join(c for c in alphabet if c not in '0O1IL')
+    alphabet = alphabet.replace('0', '').replace('O', '').replace('1', '').replace('I', '').replace('L', '')
     
-    # Get all existing codes
+    # Get existing codes
     existing_codes = set()
     if sheet:
         existing_codes = get_existing_codes_from_sheet(sheet)
-    # Also check session state generated codes and used codes
+    # Also check session state generated codes
     existing_codes.update(st.session_state.generated_codes)
-    existing_codes.update(st.session_state.used_approval_codes)
     
-    max_attempts = 50  # Reasonable limit
+    max_attempts = 20  # Prevent infinite loop
     for attempt in range(max_attempts):
         # Generate random code
         password = ''.join(secrets.choice(alphabet) for _ in range(5))
         
-        # Check if code is unique and not already used
+        # Check if code is unique
         if password not in existing_codes:
             st.session_state.generated_codes.add(password)
             log_debug(f"Generated unique approval password: {password} (attempt {attempt + 1})")
             return password
     
-    # Fallback method
-    log_debug(f"Could not generate unique random code after {max_attempts} attempts, using fallback")
+    # If we couldn't generate a unique random code after max attempts
+    # Use timestamp-based fallback method
+    log_debug(f"Could not generate unique random code after {max_attempts} attempts, using fallback method")
     
-    # Use timestamp-based method
-    timestamp = int(time.time() * 1000)
+    # Fallback: Use timestamp + random suffix
+    timestamp = int(time.time() * 1000)  # Milliseconds
     base36 = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
     
+    # Convert timestamp to base-36
     code = ""
-    temp = timestamp
-    while temp > 0 and len(code) < 3:
-        temp, remainder = divmod(temp, 36)
+    temp_timestamp = timestamp
+    while temp_timestamp > 0 and len(code) < 3:
+        temp_timestamp, remainder = divmod(temp_timestamp, 36)
         code = base36[remainder] + code
     
+    # Add random characters to make 5 characters
     while len(code) < 5:
         code = code + secrets.choice(base36)
     
-    # Ensure uniqueness
+    # Ensure uniqueness by checking again
     if code not in existing_codes:
         st.session_state.generated_codes.add(code)
         log_debug(f"Generated fallback unique code: {code}")
         return code
+    else:
+        # Last resort: add incremental number
+        for i in range(1, 100):
+            fallback_code = f"{code[:4]}{i}"
+            if fallback_code not in existing_codes:
+                st.session_state.generated_codes.add(fallback_code)
+                log_debug(f"Generated incremental fallback code: {fallback_code}")
+                return fallback_code
     
-    # Last resort
+    # Absolute last resort (should never happen)
     final_code = str(uuid.uuid4().int)[:5].upper()
-    final_code = ''.join(c for c in final_code if c in alphabet)
+    final_code = ''.join([c for c in final_code if c in alphabet])
     while len(final_code) < 5:
         final_code = final_code + secrets.choice(alphabet)
     
@@ -1255,43 +1223,10 @@ def generate_approval_password(sheet=None):
     log_debug(f"Generated UUID-based fallback code: {final_code}")
     return final_code
 
-def calculate_total_calendar_days(from_date, till_date):
-    """
-    Calculate total calendar days including Sundays.
-    Both start and end dates are included.
-    Example: Jan 1 to Jan 3 = 3 days total
-    """
-    return (till_date - from_date).days + 1
-
-def calculate_days(from_date, till_date, leave_type):
-    """Calculate number of days with proper logic - FIXED TO INCLUDE SUNDAYS"""
-    if leave_type == "Half Day":
-        return 0.5
-    elif leave_type == "Early Exit":
-        return ""
-    else:
-        # For Full Day leave, count ALL calendar days including Sundays
-        return calculate_total_calendar_days(from_date, till_date)
-
-def calculate_working_days(from_date, till_date):
-    """Calculate number of working days excluding Sundays (for reference only)"""
-    total_days = calculate_total_calendar_days(from_date, till_date)
-    
-    # Count Sundays efficiently
-    sundays = 0
-    current_date = from_date
-    for i in range(total_days):
-        if current_date.weekday() == 6:  # Sunday
-            sundays += 1
-        current_date += timedelta(days=1)
-    
-    return total_days - sundays
-
-@st.cache_resource(ttl=300)
 def get_google_credentials():
     """Get Google credentials from Streamlit secrets"""
     try:
-        # Check if secrets exist
+        # Check if secrets exist - try both lowercase and uppercase
         if 'google_credentials' in st.secrets:
             log_debug("Found google_credentials (lowercase) in secrets")
             secrets_key = "google_credentials"
@@ -1305,7 +1240,7 @@ def get_google_credentials():
         
         log_debug(f"Loading Google credentials from {secrets_key}")
         
-        # Access each field individually
+        # Access each field individually (more reliable in Streamlit Cloud)
         try:
             creds_dict = {
                 "type": st.secrets[secrets_key]["type"],
@@ -1327,12 +1262,15 @@ def get_google_credentials():
         # Fix private key formatting if needed
         private_key = creds_dict.get("private_key", "")
         if private_key:
+            # Check if private key has escaped newlines
             if "\\n" in private_key:
                 creds_dict["private_key"] = private_key.replace("\\n", "\n")
                 log_debug("Fixed escaped newlines in private key")
             
+            # Ensure it has proper BEGIN/END headers
             if not private_key.startswith("-----BEGIN PRIVATE KEY-----"):
-                if "MII" in private_key[:50]:
+                # Try to add headers if missing
+                if "MII" in private_key[:50]:  # Looks like base64 encoded key
                     creds_dict["private_key"] = f"-----BEGIN PRIVATE KEY-----\n{private_key}\n-----END PRIVATE KEY-----"
                     log_debug("Added BEGIN/END headers to private key")
         
@@ -1345,7 +1283,6 @@ def get_google_credentials():
         st.error(f"❌ Error loading credentials: {str(e)}")
         return None
 
-@st.cache_resource(ttl=300)
 def setup_google_sheets():
     """Setup Google Sheets connection"""
     try:
@@ -1361,26 +1298,30 @@ def setup_google_sheets():
             st.error("❌ No Google credentials found")
             return None
         
+        # Check if private key exists
         if not creds_dict.get("private_key"):
             st.error("❌ Google private key not found in credentials")
             return None
         
         try:
+            # Create credentials
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPES)
             log_debug("Successfully created ServiceAccountCredentials")
         except Exception as cred_error:
             log_debug(f"Error creating credentials: {str(cred_error)}")
             raise cred_error
         
+        # Authorize client
         client = gspread.authorize(creds)
         
+        # Try to open the sheet
         SHEET_NAME = "Leave_Applications"
         try:
             spreadsheet = client.open(SHEET_NAME)
             sheet = spreadsheet.sheet1
             log_debug(f"Successfully connected to sheet: {SHEET_NAME}")
             
-            # Check if headers exist
+            # Check if headers exist, add them if not
             try:
                 if sheet.row_count == 0 or not sheet.row_values(1):
                     headers = [
@@ -1411,10 +1352,11 @@ def setup_google_sheets():
         return None
 
 def get_email_credentials():
-    """Get email credentials from Streamlit secrets"""
+    """Get email credentials from Streamlit secrets with better error handling"""
     try:
         log_debug("Getting email credentials from secrets...")
         
+        # Try different possible secret names
         possible_sections = ['EMAIL', 'email', 'gmail', 'GMAIL']
         sender_email = None
         sender_password = None
@@ -1433,6 +1375,7 @@ def get_email_credentials():
                     log_debug(f"Error reading {section} section: {str(e)}")
         
         if not sender_email or not sender_password:
+            # Check environment variables as fallback
             log_debug("Trying environment variables...")
             sender_email = os.environ.get("EMAIL_SENDER", os.environ.get("SENDER_EMAIL"))
             sender_password = os.environ.get("EMAIL_PASSWORD", os.environ.get("SENDER_PASSWORD"))
@@ -1443,6 +1386,7 @@ def get_email_credentials():
             log_debug(f"Email credentials loaded for: {sender_email}")
             log_debug(f"Password length: {len(sender_password)} characters")
             
+            # Log password type for debugging
             if len(sender_password) == 16:
                 log_debug("Password appears to be a Gmail App Password (16 chars)")
             elif " " in sender_password:
@@ -1469,6 +1413,7 @@ def check_email_configuration():
             "source": source
         }
     
+    # Check if email looks valid
     if "@" not in sender_email or "." not in sender_email:
         return {
             "configured": False,
@@ -1477,6 +1422,7 @@ def check_email_configuration():
             "source": source
         }
     
+    # Test if credentials might be an app password (16 characters)
     if len(sender_password) == 16 and ' ' not in sender_password:
         password_type = "App Password"
     elif len(sender_password) > 0:
@@ -1494,12 +1440,12 @@ def check_email_configuration():
     }
     
 def create_smtp_connection(sender_email, sender_password):
-    """Create and return SMTP connection"""
+    """Create and return SMTP connection with multiple fallback methods"""
     server = None
     connection_method = ""
     error_messages = []
     
-    # Method 1: SMTP_SSL (Port 465)
+    # Method 1: SMTP_SSL (Port 465) - Primary method
     try:
         log_debug("Trying SMTP_SSL on port 465...")
         context = ssl.create_default_context()
@@ -1514,7 +1460,7 @@ def create_smtp_connection(sender_email, sender_password):
         if server:
             server.quit()
     
-    # Method 2: STARTTLS (Port 587)
+    # Method 2: STARTTLS (Port 587) - Secondary method
     try:
         log_debug("Trying STARTTLS on port 587...")
         server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
@@ -1579,9 +1525,11 @@ def test_email_connection(test_recipient=None):
         log_debug(f"Sender: {sender_email}")
         log_debug(f"Password source: {source}")
         
+        # Use test recipient or sender's email for testing
         recipient = test_recipient or sender_email
         log_debug(f"Recipient: {recipient}")
         
+        # Create test message
         msg = MIMEMultipart()
         msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
         msg['To'] = recipient
@@ -1605,6 +1553,7 @@ def test_email_connection(test_recipient=None):
         
         msg.attach(MIMEText(body, 'plain'))
         
+        # Try to create SMTP connection
         log_debug("Attempting to establish SMTP connection...")
         server, method = create_smtp_connection(sender_email, sender_password)
         
@@ -1628,6 +1577,7 @@ def test_email_connection(test_recipient=None):
                 error_msg = str(e)
                 log_debug(f"Error sending test email: {error_msg}")
                 
+                # Provide specific guidance based on error
                 if "535" in error_msg or "534" in error_msg:
                     troubleshooting = """
                     **Solution for Authentication Error:**
@@ -1714,11 +1664,27 @@ def test_email_connection(test_recipient=None):
         }
         return result
 
+def calculate_working_days(from_date, till_date):
+    """Calculate total number of days including Sundays"""
+    total_days = (till_date - from_date).days + 1
+    return total_days
+
+def calculate_days(from_date, till_date, leave_type):
+    """Calculate number of days with proper logic"""
+    if leave_type == "Half Day":
+        return 0.5
+    elif leave_type == "Early Exit":
+        return ""
+    else:
+        # For Full Day leave, calculate total days including Sundays
+        return calculate_working_days(from_date, till_date)
+
 def send_approval_email(employee_name, superior_name, superior_email, clusters_data, cluster_codes):
     """Send approval request email to superior with separate codes for each cluster"""
     try:
         log_debug(f"Preparing to send approval email to {superior_email}")
         
+        # Get email credentials
         sender_email, sender_password, source = get_email_credentials()
         
         if not sender_email or not sender_password:
@@ -1726,11 +1692,13 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
             log_debug("Email credentials missing")
             return False
             
+        # Check if it's a valid email
         if "@" not in superior_email or "." not in superior_email:
             st.warning(f"⚠️ Invalid email format: {superior_email}")
             log_debug(f"Invalid email format: {superior_email}")
             return False
         
+        # Get app URL
         try:
             app_url = st.secrets["APP_URL"]
         except:
@@ -1738,6 +1706,7 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
         
         log_debug(f"Using app URL: {app_url}")
         
+        # Create email message
         msg = MIMEMultipart('alternative')
         msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
         msg['To'] = superior_email
@@ -1846,6 +1815,7 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
         
         msg.attach(MIMEText(html_body, 'html'))
         
+        # Create SMTP connection
         log_debug(f"Creating SMTP connection for approval email to {superior_email}")
         server, method = create_smtp_connection(sender_email, sender_password)
         
@@ -1875,14 +1845,8 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
         return False
 
 def update_leave_status(sheet, approval_password, status):
-    """Update leave status in Google Sheet using only approval password - FIXED TO PREVENT REUSE"""
+    """Update leave status in Google Sheet using only approval password"""
     try:
-        # First check if code has already been used
-        if check_code_is_used(sheet, approval_password):
-            log_debug(f"Approval code {approval_password} has already been used")
-            st.error(f"❌ This approval code has already been used. Please contact HR if this is an error.")
-            return False
-        
         all_records = sheet.get_all_values()
         
         for idx, row in enumerate(all_records):
@@ -1890,19 +1854,13 @@ def update_leave_status(sheet, approval_password, status):
                 continue
             
             if len(row) > 13 and row[13] == approval_password:
-                # Mark the code as used in session state
-                st.session_state.used_approval_codes.add(approval_password)
-                
-                # Update the record
                 sheet.update_cell(idx + 1, 12, status)  # Status column
                 sheet.update_cell(idx + 1, 13, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date
                 sheet.update_cell(idx + 1, 14, "USED")  # Mark password as used
-                
                 log_debug(f"Updated row {idx + 1} to status: {status}")
                 return True
         
         log_debug("No matching record found for approval")
-        st.error("❌ Invalid approval code. Please check and try again.")
         return False
         
     except Exception as e:
@@ -2174,8 +2132,8 @@ with tab1:
     with col2:
         department = st.selectbox(
             "🏛️ Department",
-            ["Select Department"] + list(DEPARTMENTS),
-            index=0 if st.session_state.form_data_tab1['department'] == 'Select Department' else list(DEPARTMENTS).index(st.session_state.form_data_tab1['department']) + 1,
+            ["Select Department"] + DEPARTMENTS,
+            index=0 if st.session_state.form_data_tab1['department'] == 'Select Department' else DEPARTMENTS.index(st.session_state.form_data_tab1['department']) + 1,
             help="Select your department from the list",
             key="department_select"
         )
@@ -2249,13 +2207,13 @@ with tab1:
                         till_date = st.date_input(
                             f"To - Period {i+1}",
                             value=cluster['till_date'],
-                            min_value=from_date if from_date else datetime.now().date(),
+                            min_value=datetime.now().date(),
                             key=f"till_date_cluster_{i}"
                         )
                         st.session_state.clusters[i]['till_date'] = till_date
             
             with col3:
-                # Calculate days for this cluster - USING FIXED CALCULATION
+                # Calculate days for this cluster
                 if leave_type != "Select Type":
                     no_of_days = calculate_days(
                         st.session_state.clusters[i]['from_date'],
@@ -2295,11 +2253,11 @@ with tab1:
             })
             st.rerun()
         
-        # Calculate total days for all clusters - USING FIXED CALCULATION
+        # Calculate total days for all clusters
         total_days = 0
         for cluster in st.session_state.clusters:
             if cluster['leave_type'] == "Full Day":
-                days = calculate_days(cluster['from_date'], cluster['till_date'], "Full Day")
+                days = calculate_working_days(cluster['from_date'], cluster['till_date'])
                 total_days += days
             elif cluster['leave_type'] == "Half Day":
                 total_days += 0.5
@@ -2308,10 +2266,9 @@ with tab1:
         st.markdown(f"""
             <div style="background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%); 
                         color: white; padding: 1rem; border-radius: 12px; text-align: center; margin: 1rem 0;">
-                <div style="font-size: 0.9rem;">Total Days</div>
+                <div style="font-size: 0.9rem;">Total Working Days</div>
                 <div style="font-size: 2rem; font-weight: bold;">{total_days}</div>
                 <div style="font-size: 0.8rem;">across {len(st.session_state.clusters)} period(s)</div>
-        
             </div>
         """, unsafe_allow_html=True)
     
@@ -2372,7 +2329,7 @@ with tab1:
                     till_date = st.date_input(
                         "📅 End Date",
                         value=till_date_value,
-                        min_value=from_date if from_date else datetime.now().date(),
+                        min_value=datetime.now().date(),
                         help="Select the last day of your leave",
                         key="till_date_single"
                     )
@@ -2382,7 +2339,7 @@ with tab1:
         st.session_state.clusters[0]['from_date'] = from_date
         st.session_state.clusters[0]['till_date'] = till_date
         
-        # Calculate and display days - USING FIXED CALCULATION
+        # Calculate and display days
         if leave_type != "Select Type":
             no_of_days = calculate_days(from_date, till_date, leave_type)
             
@@ -2416,10 +2373,11 @@ with tab1:
                             {no_of_days}
                         </div>
                         <div style="font-size: 0.9rem; color: #805ad5;">
-                            Total days
+                            working days
                         </div>
-             
-                        
+                        <div style="font-size: 0.8rem; color: #9c27b0; margin-top: 5px;">
+                            (Total Days)
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
     
@@ -2503,7 +2461,7 @@ with tab1:
                     
                     if sheet:
                         try:
-                            # Generate unique codes for each cluster with duplicate checking
+                            # Generate unique codes for each cluster (WITH DUPLICATE CHECKING)
                             cluster_codes = {}
                             for i in range(len(st.session_state.clusters)):
                                 # Generate code with duplicate checking
@@ -2861,8 +2819,18 @@ with tab2:
                         time.sleep(2)
                         st.rerun()
                     else:
-                        # Error message already shown by update_leave_status function
-                        pass
+                        st.markdown('''
+                            <div class="error-message">
+                                <div style="display: flex; align-items: center; justify-content: center;">
+                                    <div style="font-size: 1.5rem; margin-right: 10px;">🔐</div>
+                                    <div>
+                                        <strong>Authentication Failed</strong><br>
+                                        Invalid code or code already used.<br>
+                                        Please check your approval code or contact HR for assistance.
+                                    </div>
+                                </div>
+                            </div>
+                        ''', unsafe_allow_html=True)
                 else:
                     st.markdown('''
                         <div class="error-message">
@@ -2883,10 +2851,8 @@ with tab3:
             <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
             <div>
                 <h3 style="margin: 0;">Company Holidays 2026</h3>
-                <p style="margin: 5px 0 0 0; color: #718096; font-size: 0.95rem;">
-                    Official holiday schedule for the year
-                </p>
-            </div>
+              
+            
         </div>
     """, unsafe_allow_html=True)
     
@@ -2905,8 +2871,16 @@ with tab3:
         </div>
     """, unsafe_allow_html=True)
     
-    # Get cached holidays data
-    df = get_cached_holidays_data()
+    # Create a DataFrame for the holidays
+    holidays_data = []
+    for holiday in HOLIDAYS_2026:
+        day_month = holiday["date"].split("-")
+        date_str = f"{day_month[0]} {day_month[1]} 2026"
+        holidays_data.append({
+            "📅 Date": date_str,
+            "📆 Day": holiday["day"],
+            "🎉 Holiday": holiday["holiday"]
+        })
     
     # Add CSS for table styling and centering
     st.markdown("""
@@ -2947,6 +2921,9 @@ with tab3:
         }
         </style>
     """, unsafe_allow_html=True)
+    
+    # Create the dataframe
+    df = pd.DataFrame(holidays_data)
     
     # Function to apply day badge styling
     def style_day(val):
@@ -3027,7 +3004,7 @@ st.markdown("""
         </div>
         <div style="font-size: 0.9rem;">
             📧 hrvolarfashion@gmail.com<br>
-            © 2026 VOLAR FASHION.
+            © 2024 VOLAR FASHION.
         </div>
     </div>
 """, unsafe_allow_html=True)
