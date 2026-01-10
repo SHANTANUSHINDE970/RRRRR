@@ -1040,8 +1040,8 @@ SUPERIORS = {
     "HR": "hrvolarfashion@gmail.com",
     "Rajeev Thakur": "Rajeev@vfemails.com",
     "Krishna Yadav": "Krishna@vfemails.com",
-    "Sarath Kumar": "Sarath@vfemails.com",
-    "p":"Shinde78617@gmail.com"
+    "Sarath Kumar": "Sarath@vfemails.com"
+    
 }
 
 # Department options
