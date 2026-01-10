@@ -1073,7 +1073,7 @@ HOLIDAYS_2026 = (
     {"date": "21-Oct", "day": "Wednesday", "holiday": "Vijaydashmi"},
     {"date": "08-Nov", "day": "Sunday", "holiday": "Diwali"},
     {"date": "11-Nov", "day": "Wednesday", "holiday": "Bhai Dooj"},
-    {"date": "25-Dec", "day": "Friday", "holiday": "Christmas"
+    {"date": "25-Dec", "day": "Friday", "holiday": "Christmas"}
 )
 
 # Initialize session state
