@@ -2416,11 +2416,10 @@ with tab1:
                             {no_of_days}
                         </div>
                         <div style="font-size: 0.9rem; color: #805ad5;">
-                            calendar days
+                            Total days
                         </div>
-                        <div style="font-size: 0.8rem; color: #9c27b0; margin-top: 5px;">
-                            (including Sundays)
-                        </div>
+             
+                        
                     </div>
                 """, unsafe_allow_html=True)
     
@@ -3028,7 +3027,7 @@ st.markdown("""
         </div>
         <div style="font-size: 0.9rem;">
             📧 hrvolarfashion@gmail.com<br>
-            © 2024 VOLAR FASHION.
+            © 2026 VOLAR FASHION.
         </div>
     </div>
 """, unsafe_allow_html=True)
