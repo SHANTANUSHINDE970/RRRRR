@@ -3028,7 +3028,7 @@ st.markdown("""
         </div>
         <div style="font-size: 0.9rem;">
             📧 hrvolarfashion@gmail.com<br>
-            © 2024 VOLAR FASHION.
+            © 2026 VOLAR FASHION.
         </div>
     </div>
 """, unsafe_allow_html=True)
