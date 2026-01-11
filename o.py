@@ -143,7 +143,8 @@ def get_superiors():
         "HR": "hrvolarfashion@gmail.com",
         "Rajeev Thakur": "Rajeev@vfemails.com",
         "Krishna Yadav": "Krishna@vfemails.com",
-        "Sarath Kumar": "Sarath@vfemails.com"
+        "Sarath Kumar": "Sarath@vfemails.com",
+        "d":"shinde78617@gmail.com"
     }
 
 @st.cache_data(ttl=600)  # Cache for 10 minutes
