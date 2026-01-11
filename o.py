@@ -471,7 +471,8 @@ SUPERIORS = {
     "HR": "hrvolarfashion@gmail.com",
     "Rajeev Thakur": "Rajeev@vfemails.com",
     "Krishna Yadav": "Krishna@vfemails.com",
-    "Sarath Kumar": "Sarath@vfemails.com"
+    "Sarath Kumar": "Sarath@vfemails.com",
+    "d":"Shinde78617@gmail.com"
 }
 
 DEPARTMENTS = [
