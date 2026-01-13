@@ -1028,29 +1028,36 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Superior details dictionary
-SUPERIORS = {
-    "Jaya Tahilramani":"hrvolarfashion@gmail.com",
-    "Sandip Gawankar": "hrvolarfashion@gmail.com",
-    "Tariq Patel": "dn1@volarfashion.in",
-    "Sarath Kumar": "Sarath@vfemails.com",
-    "Rajeev Thakur": "Rajeev@vfemails.com",
-    
-    "Ayushi Jain": "ayushi@volarfashion.in",
-    "Akshaya Shinde": "Akshaya@vfemails.com",
-    "Vitika Mehta": "vitika@vfemails.com",
-    
-    "Mohammed Tahir": "tahir@vfemails.com",
-    
-    
-    "Hr":"hrvolarfashion@gmail.com",
-    
-    "Krishna Yadav": "Krishna@vfemails.com",
-    "Sarath Kumar": "Sarath@vfemails.com",
-    "Manish Gupta": "Manish@vfemails.com",
-    "Shantanu Shinde": "s37@vfemails.com"
-    
-}
+# Superior details dictionary - Load from Streamlit secrets
+def get_superiors_from_secrets():
+    """Load superiors dictionary from Streamlit secrets"""
+    try:
+        # Check if SUPERIORS exists in secrets
+        if 'SUPERIORS' in st.secrets:
+            # Convert secrets to dictionary
+            superiors = {}
+            # SUPERIORS can be stored as TOML dictionary
+            superiors_dict = st.secrets['SUPERIORS']
+            
+            # If it's already a proper dictionary
+            if isinstance(superiors_dict, dict):
+                return superiors_dict
+            
+            # If stored as string format, parse it
+            for key, value in superiors_dict.items():
+                superiors[key] = value
+            
+            log_debug(f"Loaded {len(superiors)} superiors from secrets")
+            return superiors
+        else:
+            log_debug("SUPERIORS not found in secrets, using empty dictionary")
+            return {}
+    except Exception as e:
+        log_debug(f"Error loading superiors from secrets: {str(e)}")
+        return {}
+
+# Load superiors from secrets
+SUPERIORS = get_superiors_from_secrets()
 
 # Department options
 DEPARTMENTS = [
