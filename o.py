@@ -1029,21 +1029,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Superior details dictionary
-SUPERIORS = {
-    
-    "Ayushi Jain": "ayushi@volarfashion.in",
-    "Akshaya Shinde": "Akshaya@vfemails.com",
-    "Vitika Mehta": "vitika@vfemails.com",
-    "Manish Gupta": "Manish@vfemails.com",
-    "Mohammed Tahir": "tahir@vfemails.com",
-    "Tariq Patel": "dn1@volarfashion.in",
-    "HR": "hrvolarfashion@gmail.com",
-    "Rajeev Thakur": "Rajeev@vfemails.com",
-    "Krishna Yadav": "Krishna@vfemails.com",
-    "Sarath Kumar": "Sarath@vfemails.com",
-    "Shantanu Shinde": "s37@vfemails.com"
-    
-}
+# Function to get superiors from Streamlit secrets (kept private)
+def get_superiors_from_secrets():
+    """Get superiors dictionary from Streamlit secrets - not visible on GitHub"""
+    try:
+        # Check if superiors exist in secrets
+        if 'SUPERIORS' in st.secrets:
+            return st.secrets['SUPERIORS']
+        else:
+            # Return empty dict if not configured - will show error in app
+            return {}
+    except:
+        return {}
+
+# Initialize superiors from secrets
+SUPERIORS = get_superiors_from_secrets()
 
 # Department options
 DEPARTMENTS = [
