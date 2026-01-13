@@ -1027,34 +1027,68 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+# Superior details dictionary - Load from Streamlit secrets
 def get_superiors_from_secrets():
     """Load superiors dictionary from Streamlit secrets"""
     try:
-        # Try JSON format first
+        import json
+        
+        # Check for SUPERIORS in secrets
+        if 'SUPERIORS' in st.secrets:
+            superiors_dict = {}
+            
+            # Try to access as dictionary
+            try:
+                # Streamlit secrets can be accessed as dict
+                for key, value in st.secrets.SUPERIORS.items():
+                    # Convert keys with underscores back to spaces
+                    formatted_key = str(key).replace('_', ' ')
+                    superiors_dict[formatted_key] = str(value)
+                
+                if superiors_dict:
+                    log_debug(f"✓ Loaded {len(superiors_dict)} superiors from secrets")
+                    return superiors_dict
+            except Exception as e:
+                log_debug(f"Error parsing SUPERIORS as dict: {str(e)}")
+        
+        # Check for JSON format
         if 'SUPERIORS_JSON' in st.secrets:
-            import json
-            superiors = json.loads(st.secrets['SUPERIORS_JSON'])
-            log_debug(f"Loaded {len(superiors)} superiors from JSON")
-            return superiors
-        # Try TOML dictionary format
-        elif 'SUPERIORS' in st.secrets:
-            superiors = {}
-            superiors_dict = st.secrets['SUPERIORS']
+            try:
+                superiors = json.loads(st.secrets['SUPERIORS_JSON'])
+                log_debug(f"✓ Loaded {len(superiors)} superiors from JSON")
+                return superiors
+            except json.JSONDecodeError as e:
+                log_debug(f"JSON decode error: {str(e)}")
+        
+        # Fallback: Check environment variable
+        import os
+        if 'SUPERIORS_JSON' in os.environ:
+            try:
+                superiors = json.loads(os.environ['SUPERIORS_JSON'])
+                log_debug(f"✓ Loaded {len(superiors)} superiors from env var")
+                return superiors
+            except:
+                pass
+        
+        log_debug("⚠ SUPERIORS not found in secrets")
+        return {}
             
-            # Convert keys with underscores back to spaces
-            for key, value in superiors_dict.items():
-                formatted_key = key.replace('_', ' ')  # Convert Jaya_Tahilramani back to Jaya Tahilramani
-                superiors[formatted_key] = value
-            
-            log_debug(f"Loaded {len(superiors)} superiors from TOML")
-            return superiors
-        else:
-            log_debug("SUPERIORS not found in secrets")
-            return {}
     except Exception as e:
-        log_debug(f"Error loading superiors from secrets: {str(e)}")
+        log_debug(f"✗ Error loading superiors from secrets: {str(e)}")
         return {}
 
+# Initialize SUPERIORS with a default value first
+SUPERIORS = {}
+
+# Try to load from secrets
+loaded_superiors = get_superiors_from_secrets()
+if loaded_superiors:
+    SUPERIORS = loaded_superiors
+    log_debug(f"Successfully loaded {len(SUPERIORS)} superiors")
+else:
+    # Provide a fallback or warning
+    log_debug("No superiors loaded from secrets - using empty dictionary")
+    st.sidebar.warning("⚠ Manager list not configured in secrets")
 # Department options
 DEPARTMENTS = [
 "Accounts and Finance",
