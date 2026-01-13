@@ -1037,7 +1037,9 @@ SUPERIORS = {
     "Manish Gupta": "Manish@vfemails.com",
     "Mohammed Tahir": "tahir@vfemails.com",
     "Tariq Patel": "dn1@volarfashion.in",
-    "HR": "hrvolarfashion@gmail.com",
+    "Sandeep Gawankar": "hrvolarfashion@gmail.com",
+    "Jaya Tahilramani":"hrvolarfashion@gmail.com",
+    "Hr":"hrvolarfashion@gmail.com"
     "Rajeev Thakur": "Rajeev@vfemails.com",
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
