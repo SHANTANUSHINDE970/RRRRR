@@ -1027,37 +1027,33 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
-# Superior details dictionary - Load from Streamlit secrets
 def get_superiors_from_secrets():
     """Load superiors dictionary from Streamlit secrets"""
     try:
-        # Check if SUPERIORS exists in secrets
-        if 'SUPERIORS' in st.secrets:
-            # Convert secrets to dictionary
+        # Try JSON format first
+        if 'SUPERIORS_JSON' in st.secrets:
+            import json
+            superiors = json.loads(st.secrets['SUPERIORS_JSON'])
+            log_debug(f"Loaded {len(superiors)} superiors from JSON")
+            return superiors
+        # Try TOML dictionary format
+        elif 'SUPERIORS' in st.secrets:
             superiors = {}
-            # SUPERIORS can be stored as TOML dictionary
             superiors_dict = st.secrets['SUPERIORS']
             
-            # If it's already a proper dictionary
-            if isinstance(superiors_dict, dict):
-                return superiors_dict
-            
-            # If stored as string format, parse it
+            # Convert keys with underscores back to spaces
             for key, value in superiors_dict.items():
-                superiors[key] = value
+                formatted_key = key.replace('_', ' ')  # Convert Jaya_Tahilramani back to Jaya Tahilramani
+                superiors[formatted_key] = value
             
-            log_debug(f"Loaded {len(superiors)} superiors from secrets")
+            log_debug(f"Loaded {len(superiors)} superiors from TOML")
             return superiors
         else:
-            log_debug("SUPERIORS not found in secrets, using empty dictionary")
+            log_debug("SUPERIORS not found in secrets")
             return {}
     except Exception as e:
         log_debug(f"Error loading superiors from secrets: {str(e)}")
         return {}
-
-# Load superiors from secrets
-SUPERIORS = get_superiors_from_secrets()
 
 # Department options
 DEPARTMENTS = [
