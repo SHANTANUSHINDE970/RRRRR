@@ -1035,7 +1035,7 @@ SUPERIORS = {
     "Akshaya Shinde": "Akshaya@vfemails.com",
     "Vitika Mehta": "vitika@vfemails.com",
     "Manish Gupta": "Manish@vfemails.com",
-    "Tahir Siddiqui": "tahir@vfemails.com",
+    "Mohammed Tahir": "tahir@vfemails.com",
     "Tariq Patel": "dn1@volarfashion.in",
     "HR": "hrvolarfashion@gmail.com",
     "Rajeev Thakur": "Rajeev@vfemails.com",
