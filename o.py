@@ -1030,8 +1030,8 @@ st.markdown("""
 
 # Superior details dictionary
 SUPERIORS = {
-    "Jaya Tahilramani":"hrvolarfashion@gmail.com",
-    "Sandip Gawankar": "hrvolarfashion@gmail.com",
+    "Jaya Tahilramani":"admin1@volarfashion.in",
+    "Sandip Gawankar": "admin1@volarfashion.in",
     "Tariq Patel": "dn1@volarfashion.in",
     "Sarath Kumar": "Sarath@vfemails.com",
     "Rajeev Thakur": "Rajeev@vfemails.com",
@@ -1043,7 +1043,7 @@ SUPERIORS = {
     "Mohammed Tahir": "tahir@vfemails.com",
     
     
-    "Hr":"hrvolarfashion@gmail.com",
+    "Hr":"admin1@volarfashion.in",
     
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
