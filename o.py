@@ -1030,8 +1030,8 @@ st.markdown("""
 
 # Superior details dictionary
 SUPERIORS = {
-    "Jaya Tahilramani":"hrvolarfashion@gmail.com",
-    "Sandip Gawankar": "hrvolarfashion@gmail.com",
+    "Jaya Tahilramani":"admin1@volarfashion.in",
+    "Sandip Gawankar": "admin1@volarfashion.in",
     "Tariq Patel": "dn1@volarfashion.in",
     "Sarath Kumar": "Sarath@vfemails.com",
     "Rajeev Thakur": "Rajeev@vfemails.com",
@@ -1043,7 +1043,7 @@ SUPERIORS = {
     "Mohammed Tahir": "tahir@vfemails.com",
     
     
-    "Hr":"hrvolarfashion@gmail.com",
+    "Hr":"admin1@volarfashion.in",
     
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
@@ -1814,7 +1814,7 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
                 
                 <div class="footer">
                     VOLAR FASHION PVT LTD - HR Department<br>
-                    📧 hrvolarfashion@gmail.com<br>
+                    📧 admin1@volarfashion.in<br>
                     This is an automated message.
                 </div>
             </div>
@@ -2020,7 +2020,7 @@ with st.sidebar.expander("📖 Email Setup Guide"):
        - Add this configuration:
     ```toml
     [EMAIL]
-    sender_email = "hrvolarfashion@gmail.com"
+    sender_email = "admin1@volarfashion.in"
     sender_password = "your-16-character-app-password"
     ```
     
@@ -3010,7 +3010,7 @@ st.markdown("""
             Human Resources Management System
         </div>
         <div style="font-size: 0.9rem;">
-            📧 hrvolarfashion@gmail.com<br>
+            📧 admin1@volarfashion.in<br>
             © 2026 VOLAR FASHION.
         </div>
     </div>
