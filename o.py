@@ -1042,14 +1042,12 @@ SUPERIORS = {
     
     "Mohammed Tahir": "tahir@vfemails.com",
     
-    
     "Hr":"admin1@volarfashion.in",
     
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
     "Manish Gupta": "Manish@vfemails.com",
     "Shantanu Shinde": "s37@vfemails.com"
-    
 }
 
 # Department options
@@ -1102,8 +1100,8 @@ if 'reset_form_tab2' not in st.session_state:
 if 'form_data_tab1' not in st.session_state:
     st.session_state.form_data_tab1 = {
         'employee_name': '',
-        'employee_email': '',
         'employee_code': '',
+        'employee_email': '',
         'department': 'Select Department',
         'purpose': '',
         'superior_name': 'Select Manager',
@@ -1147,7 +1145,6 @@ def get_existing_codes_from_sheet(sheet):
     """Get all existing approval codes from Google Sheets"""
     try:
         if not sheet:
-            log_debug("No sheet provided to get existing codes")
             return set()
         
         all_records = sheet.get_all_values()
@@ -1156,10 +1153,8 @@ def get_existing_codes_from_sheet(sheet):
         for idx, row in enumerate(all_records):
             if idx == 0:  # Skip header
                 continue
-            if len(row) > 14 and row[14]:  # Column 15 is approval code (0-indexed)
-                code = row[14].strip()
-                if code and code != "USED":
-                    existing_codes.add(code)
+            if len(row) > 15 and row[15]:  # Column 16 is approval code
+                existing_codes.add(row[15])
         
         log_debug(f"Found {len(existing_codes)} existing codes in sheet")
         return existing_codes
@@ -1168,23 +1163,73 @@ def get_existing_codes_from_sheet(sheet):
         log_debug(f"Error getting existing codes: {str(e)}")
         return set()
 
-def generate_approval_password():
+def generate_approval_password(sheet=None):
     """Generate a UNIQUE 5-digit alphanumeric password"""
-    try:
-        # Simple alphabet without confusing characters
-        alphabet = string.ascii_uppercase.replace('O', '').replace('I', '').replace('L', '') + '23456789'
-        
+    
+    # Get alphabet without confusing characters
+    alphabet = string.ascii_uppercase + string.digits
+    alphabet = alphabet.replace('0', '').replace('O', '').replace('1', '').replace('I', '').replace('L', '')
+    
+    # Get existing codes
+    existing_codes = set()
+    if sheet:
+        existing_codes = get_existing_codes_from_sheet(sheet)
+    # Also check session state generated codes
+    existing_codes.update(st.session_state.generated_codes)
+    
+    max_attempts = 20  # Prevent infinite loop
+    for attempt in range(max_attempts):
         # Generate random code
         password = ''.join(secrets.choice(alphabet) for _ in range(5))
         
-        log_debug(f"Generated approval password: {password}")
-        return password
-        
-    except Exception as e:
-        log_debug(f"Error generating password: {str(e)}")
-        # Fallback simple method
-        import random
-        return str(random.randint(10000, 99999))
+        # Check if code is unique
+        if password not in existing_codes:
+            st.session_state.generated_codes.add(password)
+            log_debug(f"Generated unique approval password: {password} (attempt {attempt + 1})")
+            return password
+    
+    # If we couldn't generate a unique random code after max attempts
+    # Use timestamp-based fallback method
+    log_debug(f"Could not generate unique random code after {max_attempts} attempts, using fallback method")
+    
+    # Fallback: Use timestamp + random suffix
+    timestamp = int(time.time() * 1000)  # Milliseconds
+    base36 = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+    
+    # Convert timestamp to base-36
+    code = ""
+    temp_timestamp = timestamp
+    while temp_timestamp > 0 and len(code) < 3:
+        temp_timestamp, remainder = divmod(temp_timestamp, 36)
+        code = base36[remainder] + code
+    
+    # Add random characters to make 5 characters
+    while len(code) < 5:
+        code = code + secrets.choice(base36)
+    
+    # Ensure uniqueness by checking again
+    if code not in existing_codes:
+        st.session_state.generated_codes.add(code)
+        log_debug(f"Generated fallback unique code: {code}")
+        return code
+    else:
+        # Last resort: add incremental number
+        for i in range(1, 100):
+            fallback_code = f"{code[:4]}{i}"
+            if fallback_code not in existing_codes:
+                st.session_state.generated_codes.add(fallback_code)
+                log_debug(f"Generated incremental fallback code: {fallback_code}")
+                return fallback_code
+    
+    # Absolute last resort (should never happen)
+    final_code = str(uuid.uuid4().int)[:5].upper()
+    final_code = ''.join([c for c in final_code if c in alphabet])
+    while len(final_code) < 5:
+        final_code = final_code + secrets.choice(alphabet)
+    
+    st.session_state.generated_codes.add(final_code)
+    log_debug(f"Generated UUID-based fallback code: {final_code}")
+    return final_code
 
 def get_google_credentials():
     """Get Google credentials from Streamlit secrets"""
@@ -1203,38 +1248,24 @@ def get_google_credentials():
         
         log_debug(f"Loading Google credentials from {secrets_key}")
         
+        # Access each field individually (more reliable in Streamlit Cloud)
         try:
-            # Get the credentials JSON string
-            creds_json = st.secrets[secrets_key]
-            
-            # If it's a string, parse it as JSON
-            if isinstance(creds_json, str):
-                import json
-                creds_dict = json.loads(creds_json)
-            else:
-                # If it's already a dict
-                creds_dict = creds_json
-                
-        except Exception as e:
-            log_debug(f"Error parsing credentials: {str(e)}")
-            # Try to access each field individually
-            try:
-                creds_dict = {
-                    "type": st.secrets[secrets_key]["type"],
-                    "project_id": st.secrets[secrets_key]["project_id"],
-                    "private_key_id": st.secrets[secrets_key]["private_key_id"],
-                    "private_key": st.secrets[secrets_key]["private_key"],
-                    "client_email": st.secrets[secrets_key]["client_email"],
-                    "client_id": st.secrets[secrets_key]["client_id"],
-                    "auth_uri": st.secrets[secrets_key]["auth_uri"],
-                    "token_uri": st.secrets[secrets_key]["token_uri"],
-                    "auth_provider_x509_cert_url": st.secrets[secrets_key]["auth_provider_x509_cert_url"],
-                    "client_x509_cert_url": st.secrets[secrets_key]["client_x509_cert_url"]
-                }
-            except KeyError as e:
-                log_debug(f"Missing key in {secrets_key}: {str(e)}")
-                st.error(f"❌ Missing credential field: {str(e)}")
-                return None
+            creds_dict = {
+                "type": st.secrets[secrets_key]["type"],
+                "project_id": st.secrets[secrets_key]["project_id"],
+                "private_key_id": st.secrets[secrets_key]["private_key_id"],
+                "private_key": st.secrets[secrets_key]["private_key"],
+                "client_email": st.secrets[secrets_key]["client_email"],
+                "client_id": st.secrets[secrets_key]["client_id"],
+                "auth_uri": st.secrets[secrets_key]["auth_uri"],
+                "token_uri": st.secrets[secrets_key]["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets[secrets_key]["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": st.secrets[secrets_key]["client_x509_cert_url"]
+            }
+        except KeyError as e:
+            log_debug(f"Missing key in {secrets_key}: {str(e)}")
+            st.error(f"❌ Missing credential field: {str(e)}")
+            return None
         
         # Fix private key formatting if needed
         private_key = creds_dict.get("private_key", "")
@@ -1251,7 +1282,8 @@ def get_google_credentials():
                     creds_dict["private_key"] = f"-----BEGIN PRIVATE KEY-----\n{private_key}\n-----END PRIVATE KEY-----"
                     log_debug("Added BEGIN/END headers to private key")
         
-        log_debug(f"Credentials loaded for: {creds_dict.get('client_email', 'Unknown')}")
+        log_debug(f"Credentials loaded for: {creds_dict['client_email']}")
+        
         return creds_dict
             
     except Exception as e:
@@ -1264,10 +1296,8 @@ def setup_google_sheets():
     try:
         log_debug("Setting up Google Sheets connection...")
         
-        SCOPES = [
-            'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/drive'
-        ]
+        SCOPES = ['https://spreadsheets.google.com/feeds', 
+                 'https://www.googleapis.com/auth/drive']
         
         # Get credentials
         creds_dict = get_google_credentials()
@@ -1287,8 +1317,7 @@ def setup_google_sheets():
             log_debug("Successfully created ServiceAccountCredentials")
         except Exception as cred_error:
             log_debug(f"Error creating credentials: {str(cred_error)}")
-            st.error(f"❌ Error creating credentials: {str(cred_error)}")
-            return None
+            raise cred_error
         
         # Authorize client
         client = gspread.authorize(creds)
@@ -1300,26 +1329,19 @@ def setup_google_sheets():
             sheet = spreadsheet.sheet1
             log_debug(f"Successfully connected to sheet: {SHEET_NAME}")
             
-            # Check if sheet has data
+            # Check if headers exist, add them if not
             try:
-                data = sheet.get_all_values()
-                log_debug(f"Sheet has {len(data)} rows")
-                
-                # If sheet is empty or missing headers, add them
-                if len(data) == 0 or not data[0]:
+                if sheet.row_count == 0 or not sheet.row_values(1):
                     headers = [
-                        "Submission Date", "Employee Name", "Employee Email", "Employee Code", "Department",
+                        "Submission Date", "Employee Name", "Employee Code", "Employee Email", "Department",
                         "Type of Leave", "No of Days", "Purpose of Leave", "From Date",
                         "Till Date", "Superior Name", "Superior Email", "Status", 
                         "Approval Date", "Approval Password", "Is Cluster Holiday", "Cluster Number"
                     ]
                     sheet.append_row(headers)
-                    log_debug("Added headers to empty sheet")
-                else:
-                    log_debug(f"Headers found: {data[0]}")
-                    
+                    log_debug("Added headers to sheet")
             except Exception as e:
-                log_debug(f"Error checking sheet data: {str(e)}")
+                log_debug(f"Warning: Could not check/add headers: {str(e)}")
             
             return sheet
             
@@ -1329,7 +1351,6 @@ def setup_google_sheets():
             return None
         except Exception as e:
             st.error(f"❌ Error accessing sheet: {str(e)}")
-            log_debug(f"Sheet access error: {traceback.format_exc()}")
             return None
         
     except Exception as e:
@@ -1666,140 +1687,8 @@ def calculate_days(from_date, till_date, leave_type):
         # For Full Day leave, calculate total days including Sundays
         return calculate_working_days(from_date, till_date)
 
-def send_employee_submission_confirmation(employee_name, employee_email, superior_name, clusters_data):
-    """Send confirmation email to employee when they submit leave application"""
-    try:
-        log_debug(f"Sending submission confirmation to employee: {employee_email}")
-        
-        # Get email credentials
-        sender_email, sender_password, source = get_email_credentials()
-        
-        if not sender_email or not sender_password:
-            log_debug("Email credentials missing for employee confirmation")
-            return False
-            
-        # Check if it's a valid email
-        if "@" not in employee_email or "." not in employee_email:
-            log_debug(f"Invalid employee email format: {employee_email}")
-            return False
-        
-        # Create email message
-        msg = MIMEMultipart('alternative')
-        msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
-        msg['To'] = employee_email
-        
-        if len(clusters_data) > 1:
-            msg['Subject'] = f"Leave Application Submitted: {len(clusters_data)} periods - Reference Submitted"
-        else:
-            msg['Subject'] = f"Leave Application Submitted - Reference Submitted"
-        
-        # Build clusters details HTML
-        clusters_html = ""
-        for i, cluster in enumerate(clusters_data):
-            days = calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type'])
-            days_display = "N/A" if cluster['leave_type'] == "Early Exit" else (f"{days} days" if cluster['leave_type'] == "Full Day" else "0.5 day")
-            
-            clusters_html += f"""
-            <div style="background: {'#f8f9ff' if i % 2 == 0 else '#f0f2ff'}; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #4dabf7;">
-                <h4 style="margin-top: 0; color: #339af0;">Period {i+1}</h4>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 5px; width: 40%;"><strong>Leave Type:</strong></td>
-                        <td style="padding: 5px;">{cluster['leave_type']}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 5px;"><strong>From Date:</strong></td>
-                        <td style="padding: 5px;">{cluster['from_date'].strftime('%Y-%m-%d')}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 5px;"><strong>Till Date:</strong></td>
-                        <td style="padding: 5px;">{cluster['till_date'].strftime('%Y-%m-%d')}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 5px;"><strong>Duration:</strong></td>
-                        <td style="padding: 5px;">{days_display}</td>
-                    </tr>
-                </table>
-            </div>
-            """
-        
-        # HTML email body
-        html_body = f"""
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
-                .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
-                .header {{ background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }}
-                .info-box {{ background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0; }}
-                .status-box {{ background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3; }}
-                .footer {{ color: #666; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h2 style="margin: 0;">Leave Application Submitted</h2>
-                    <p style="margin: 5px 0 0 0; opacity: 0.9;">VOLAR FASHION HR System</p>
-                </div>
-                
-                <p>Dear {employee_name},</p>
-                
-                <div class="info-box">
-                    <h3 style="margin-top: 0; color: #673ab7;">Application Received</h3>
-                    <p>Your leave application has been successfully submitted and is now pending approval.</p>
-                    <p><strong>Submitted To:</strong> {superior_name}</p>
-                    <p><strong>Submission Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-                </div>
-                
-                <h3 style="color: #339af0;">Leave Periods Details</h3>
-                {clusters_html}
-                
-                <div class="status-box">
-                    <h4 style="margin-top: 0; color: #1976d2;">📋 Application Status</h4>
-                    <p>Your application is currently <strong>Pending</strong>.</p>
-                    <p>Your manager <strong>{superior_name}</strong> will review your request and you will receive another email once a decision is made.</p>
-                </div>
-                
-                <div class="footer">
-                    VOLAR FASHION PVT LTD - HR Department<br>
-                    📧 hrvolarfashion@gmail.com<br>
-                    This is an automated message.
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        msg.attach(MIMEText(html_body, 'html'))
-        
-        # Create SMTP connection
-        log_debug(f"Creating SMTP connection for employee confirmation to {employee_email}")
-        server, method = create_smtp_connection(sender_email, sender_password)
-        
-        if server:
-            try:
-                log_debug(f"Sending employee confirmation via {method}...")
-                server.sendmail(sender_email, employee_email, msg.as_string())
-                server.quit()
-                log_debug(f"✓ Employee confirmation sent to {employee_email}")
-                return True
-            except Exception as e:
-                server.quit()
-                error_msg = str(e)
-                log_debug(f"Failed to send employee confirmation: {error_msg}")
-                return False
-        else:
-            log_debug(f"Could not establish SMTP connection for employee confirmation")
-            return False
-            
-    except Exception as e:
-        error_msg = str(e)
-        log_debug(f"Error in send_employee_submission_confirmation: {traceback.format_exc()}")
-        return False
-
-def send_approval_email(employee_name, superior_name, superior_email, clusters_data, cluster_codes):
-    """Send approval request email to superior with separate codes for each cluster"""
+def send_approval_email(employee_name, superior_name, superior_email, employee_email, clusters_data, cluster_codes):
+    """Send approval request email to superior and confirmation to employee"""
     try:
         log_debug(f"Preparing to send approval email to {superior_email}")
         
@@ -1807,13 +1696,21 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
         sender_email, sender_password, source = get_email_credentials()
         
         if not sender_email or not sender_password:
-            log_debug("Email credentials missing for approval email")
+            st.warning("⚠️ Email credentials not configured")
+            log_debug("Email credentials missing")
             return False
             
-        # Check if it's a valid email
+        # Check if emails are valid
         if "@" not in superior_email or "." not in superior_email:
-            log_debug(f"Invalid email format: {superior_email}")
+            st.warning(f"⚠️ Invalid superior email format: {superior_email}")
+            log_debug(f"Invalid superior email format: {superior_email}")
             return False
+        
+        # Check employee email
+        if not employee_email or "@" not in employee_email:
+            st.warning(f"⚠️ Invalid employee email format: {employee_email}")
+            log_debug(f"Invalid employee email format: {employee_email}")
+            # Continue anyway, just don't send employee email
         
         # Get app URL
         try:
@@ -1823,15 +1720,17 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
         
         log_debug(f"Using app URL: {app_url}")
         
-        # Create email message
-        msg = MIMEMultipart('alternative')
-        msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
-        msg['To'] = superior_email
+        # ============================================
+        # EMAIL 1: TO SUPERIOR (Approval Request)
+        # ============================================
+        msg_superior = MIMEMultipart('alternative')
+        msg_superior['From'] = formataddr(("VOLAR FASHION HR", sender_email))
+        msg_superior['To'] = superior_email
         
         if len(clusters_data) > 1:
-            msg['Subject'] = f"CLUSTER LEAVE: {employee_name} - {len(clusters_data)} periods"
+            msg_superior['Subject'] = f"CLUSTER LEAVE: {employee_name} - {len(clusters_data)} periods"
         else:
-            msg['Subject'] = f"Leave Approval Required: {employee_name}"
+            msg_superior['Subject'] = f"Leave Approval Required: {employee_name}"
         
         # Build clusters details HTML
         clusters_html = ""
@@ -1871,8 +1770,8 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
             </div>
             """
         
-        # Simple HTML email body
-        html_body = f"""
+        # HTML email body for superior
+        html_body_superior = f"""
         <html>
         <head>
             <style>
@@ -1898,6 +1797,7 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
                 <div class="info-box">
                     <h3 style="margin-top: 0; color: #673ab7;">Employee Information</h3>
                     <p><strong>Employee Name:</strong> {employee_name}</p>
+                    <p><strong>Employee Email:</strong> {employee_email if employee_email else 'Not provided'}</p>
                     <p><strong>Employee Code:</strong> {clusters_data[0].get('employee_code', 'N/A')}</p>
                     <p><strong>Department:</strong> {clusters_data[0].get('department', 'N/A')}</p>
                     <p><strong>Total Periods:</strong> {len(clusters_data)}</p>
@@ -1930,393 +1830,409 @@ def send_approval_email(employee_name, superior_name, superior_email, clusters_d
         </html>
         """
         
-        msg.attach(MIMEText(html_body, 'html'))
+        msg_superior.attach(MIMEText(html_body_superior, 'html'))
+        
+        # ============================================
+        # EMAIL 2: TO EMPLOYEE (Confirmation)
+        # ============================================
+        if employee_email and "@" in employee_email:
+            msg_employee = MIMEMultipart('alternative')
+            msg_employee['From'] = formataddr(("VOLAR FASHION HR", sender_email))
+            msg_employee['To'] = employee_email
+            
+            if len(clusters_data) > 1:
+                msg_employee['Subject'] = f"Leave Application Submitted: {len(clusters_data)} periods"
+            else:
+                msg_employee['Subject'] = f"Leave Application Submitted Successfully"
+            
+            # Build clusters details for employee
+            employee_clusters_html = ""
+            for i, cluster in enumerate(clusters_data):
+                days = calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type'])
+                days_display = "N/A" if cluster['leave_type'] == "Early Exit" else (f"{days} days" if cluster['leave_type'] == "Full Day" else "0.5 day")
+                
+                employee_clusters_html += f"""
+                <div style="background: {'#f8f9ff' if i % 2 == 0 else '#f0f2ff'}; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #4dabf7;">
+                    <h4 style="margin-top: 0; color: #339af0;">Period {i+1}</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 5px; width: 40%;"><strong>Leave Type:</strong></td>
+                            <td style="padding: 5px;">{cluster['leave_type']}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px;"><strong>From Date:</strong></td>
+                            <td style="padding: 5px;">{cluster['from_date'].strftime('%Y-%m-%d')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px;"><strong>Till Date:</strong></td>
+                            <td style="padding: 5px;">{cluster['till_date'].strftime('%Y-%m-%d')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px;"><strong>Duration:</strong></td>
+                            <td style="padding: 5px;">{days_display}</td>
+                        </tr>
+                    </table>
+                </div>
+                """
+            
+            # HTML email body for employee
+            html_body_employee = f"""
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+                    .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }}
+                    .info-box {{ background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0; }}
+                    .footer {{ color: #666; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h2 style="margin: 0;">Leave Application Confirmation</h2>
+                        <p style="margin: 5px 0 0 0; opacity: 0.9;">VOLAR FASHION HR System</p>
+                    </div>
+                    
+                    <p>Dear {employee_name},</p>
+                    
+                    <div class="info-box">
+                        <h3 style="margin-top: 0; color: #4caf50;">✅ Application Submitted Successfully</h3>
+                        <p>Your leave application has been submitted successfully and sent to your manager for approval.</p>
+                        
+                        <p><strong>Application Details:</strong></p>
+                        <p><strong>Employee Code:</strong> {clusters_data[0].get('employee_code', 'N/A')}</p>
+                        <p><strong>Department:</strong> {clusters_data[0].get('department', 'N/A')}</p>
+                        <p><strong>Reporting Manager:</strong> {superior_name}</p>
+                        <p><strong>Purpose:</strong> {clusters_data[0].get('purpose', 'N/A')}</p>
+                        <p><strong>Total Periods:</strong> {len(clusters_data)}</p>
+                    </div>
+                    
+                    <h3 style="color: #339af0;">Your Leave Periods</h3>
+                    {employee_clusters_html}
+                    
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3;">
+                        <h4 style="margin-top: 0; color: #0d47a1;">📋 Next Steps:</h4>
+                        <ol>
+                            <li>Your manager <strong>{superior_name}</strong> has been notified</li>
+                            <li>You will receive another email once your leave is approved or rejected</li>
+                            <li>Each period will be approved/rejected separately</li>
+                            <li>Please check your email regularly for updates</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="footer">
+                        VOLAR FASHION PVT LTD - HR Department<br>
+                        📧 hrvolarfashion@gmail.com<br>
+                        This is an automated confirmation email.
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            msg_employee.attach(MIMEText(html_body_employee, 'html'))
+        
+        # ============================================
+        # SEND ALL EMAILS
+        # ============================================
         
         # Create SMTP connection
-        log_debug(f"Creating SMTP connection for approval email to {superior_email}")
+        log_debug(f"Creating SMTP connection for emails")
         server, method = create_smtp_connection(sender_email, sender_password)
         
         if server:
             try:
-                log_debug(f"Sending approval email via {method}...")
-                server.sendmail(sender_email, superior_email, msg.as_string())
+                # Send email to superior
+                log_debug(f"Sending approval email to superior via {method}...")
+                server.sendmail(sender_email, superior_email, msg_superior.as_string())
+                log_debug(f"✓ Approval email sent to {superior_email}")
+                
+                # Send email to employee if email is valid
+                if employee_email and "@" in employee_email:
+                    try:
+                        server.sendmail(sender_email, employee_email, msg_employee.as_string())
+                        log_debug(f"✓ Confirmation email sent to {employee_email}")
+                    except Exception as e:
+                        log_debug(f"Could not send confirmation to employee: {str(e)}")
+                        # Don't fail the whole process if employee email fails
+                
                 server.quit()
-                log_debug(f"✓ Approval email sent to {superior_email} via {method}")
                 return True
+                
             except Exception as e:
                 server.quit()
                 error_msg = str(e)
-                log_debug(f"Failed to send approval email: {error_msg}")
+                log_debug(f"Failed to send emails: {error_msg}")
+                st.error(f"❌ Failed to send emails: {error_msg}")
                 return False
         else:
-            log_debug(f"Could not establish SMTP connection for approval email")
+            error_msg = f"Could not establish SMTP connection: {method}"
+            log_debug(error_msg)
+            st.error(f"❌ {error_msg}")
             return False
             
     except Exception as e:
         error_msg = str(e)
         log_debug(f"Error in send_approval_email: {traceback.format_exc()}")
+        st.error(f"❌ Email sending error: {error_msg}")
         return False
 
-def send_superior_decision_confirmation(superior_name, superior_email, employee_name, cluster_index, status, approval_code):
-    """Send confirmation email to superior when they approve/reject leave"""
+def send_decision_emails(employee_name, employee_email, superior_name, superior_email, approval_password, status, cluster_info=None):
+    """Send emails to employee and superior about the decision"""
     try:
-        log_debug(f"Sending decision confirmation to superior: {superior_email}")
+        log_debug(f"Preparing to send decision emails for {employee_name}")
         
         # Get email credentials
         sender_email, sender_password, source = get_email_credentials()
         
         if not sender_email or not sender_password:
-            log_debug("Email credentials missing for superior confirmation")
+            log_debug("Email credentials missing")
             return False
+        
+        # Get app URL
+        try:
+            app_url = st.secrets["APP_URL"]
+        except:
+            app_url = "https://9yq6u8fklhfba8uggnjr7h.streamlit.app/"
+        
+        # ============================================
+        # EMAIL 1: TO EMPLOYEE (Decision Notification)
+        # ============================================
+        if employee_email and "@" in employee_email:
+            msg_employee = MIMEMultipart('alternative')
+            msg_employee['From'] = formataddr(("VOLAR FASHION HR", sender_email))
+            msg_employee['To'] = employee_email
             
-        # Check if it's a valid email
-        if "@" not in superior_email or "." not in superior_email:
-            log_debug(f"Invalid superior email format: {superior_email}")
-            return False
+            status_display = "APPROVED ✅" if status == "Approved" else "REJECTED ❌"
+            status_color = "#4caf50" if status == "Approved" else "#f44336"
+            status_bg = "#e8f5e9" if status == "Approved" else "#ffebee"
+            
+            cluster_details = ""
+            if cluster_info:
+                days = calculate_days(cluster_info['from_date'], cluster_info['till_date'], cluster_info['leave_type'])
+                days_display = "N/A" if cluster_info['leave_type'] == "Early Exit" else (f"{days} days" if cluster_info['leave_type'] == "Full Day" else "0.5 day")
+                
+                cluster_details = f"""
+                <div style="background: #f8f9ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4dabf7;">
+                    <h4 style="margin-top: 0; color: #339af0;">Leave Period Details</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 5px; width: 40%;"><strong>Leave Type:</strong></td>
+                            <td style="padding: 5px;">{cluster_info['leave_type']}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px;"><strong>From Date:</strong></td>
+                            <td style="padding: 5px;">{cluster_info['from_date']}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px;"><strong>Till Date:</strong></td>
+                            <td style="padding: 5px;">{cluster_info['till_date']}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px;"><strong>Duration:</strong></td>
+                            <td style="padding: 5px;">{days_display}</td>
+                        </tr>
+                    </table>
+                </div>
+                """
+            
+            html_body_employee = f"""
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+                    .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: linear-gradient(135deg, {status_color} 0%, {(status_color + '80')} 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }}
+                    .info-box {{ background: {status_bg}; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid {status_color + '40'}; }}
+                    .footer {{ color: #666; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h2 style="margin: 0;">Leave Application {status_display}</h2>
+                        <p style="margin: 5px 0 0 0; opacity: 0.9;">VOLAR FASHION HR System</p>
+                    </div>
+                    
+                    <p>Dear {employee_name},</p>
+                    
+                    <div class="info-box">
+                        <h3 style="margin-top: 0; color: {status_color};">
+                            {'🎉 Congratulations! Your leave has been APPROVED' if status == 'Approved' else '📝 Update: Your leave has been REJECTED'}
+                        </h3>
+                        
+                        <p><strong>Decision:</strong> <span style="color: {status_color}; font-weight: bold;">{status_display}</span></p>
+                        <p><strong>Approved/Rejected by:</strong> {superior_name}</p>
+                        <p><strong>Decision Date:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                        
+                        {cluster_details}
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                            <p style="margin: 0;">
+                                {'✅ You can proceed with your leave plans as scheduled.' if status == 'Approved' else '❌ Please contact your manager for more information or to discuss alternative arrangements.'}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        VOLAR FASHION PVT LTD - HR Department<br>
+                        📧 hrvolarfashion@gmail.com<br>
+                        This is an automated notification.
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            msg_employee.attach(MIMEText(html_body_employee, 'html'))
         
-        # Create email message
-        msg = MIMEMultipart('alternative')
-        msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
-        msg['To'] = superior_email
+        # ============================================
+        # EMAIL 2: TO SUPERIOR (Confirmation of Action)
+        # ============================================
+        msg_superior = MIMEMultipart('alternative')
+        msg_superior['From'] = formataddr(("VOLAR FASHION HR", sender_email))
+        msg_superior['To'] = superior_email
         
-        status_text = "Approved" if status == "Approved" else "Rejected"
-        status_color = "#28a745" if status == "Approved" else "#dc3545"
-        status_bg = "#d4edda" if status == "Approved" else "#f8d7da"
+        msg_superior['Subject'] = f"Leave Decision Confirmation: {employee_name} - {status}"
         
-        msg['Subject'] = f"Leave {status_text}: {employee_name} - Period {cluster_index}"
-        
-        # HTML email body
-        html_body = f"""
+        html_body_superior = f"""
         <html>
         <head>
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
                 .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
                 .header {{ background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }}
-                .status-box {{ background: {status_bg}; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid {status_color}; }}
                 .info-box {{ background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0; }}
+                .success-box {{ background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4caf50; }}
                 .footer {{ color: #666; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; }}
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="header">
-                    <h2 style="margin: 0;">Leave Decision Recorded</h2>
+                    <h2 style="margin: 0;">Decision Confirmation</h2>
                     <p style="margin: 5px 0 0 0; opacity: 0.9;">VOLAR FASHION HR System</p>
                 </div>
                 
                 <p>Dear {superior_name},</p>
                 
-                <div class="status-box">
-                    <h3 style="margin-top: 0; color: {status_color};">
-                        {'✅ Approved' if status == 'Approved' else '❌ Rejected'}
-                    </h3>
-                    <p>You have successfully <strong>{status_text.lower()}</strong> the leave request.</p>
+                <div class="success-box">
+                    <h3 style="margin-top: 0; color: #2e7d32;">✅ Decision Successfully Recorded</h3>
+                    <p>You have successfully <strong>{status.lower()}</strong> the leave request.</p>
                 </div>
                 
                 <div class="info-box">
-                    <h4 style="margin-top: 0; color: #673ab7;">Decision Details</h4>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px; width: 40%;"><strong>Employee:</strong></td>
-                            <td style="padding: 8px;">{employee_name}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Period:</strong></td>
-                            <td style="padding: 8px;">{cluster_index}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Approval Code:</strong></td>
-                            <td style="padding: 8px;">
-                                <span style="background: #fff3cd; padding: 5px 10px; border-radius: 4px; font-family: 'Courier New', monospace; font-weight: bold;">
-                                    {approval_code}
-                                </span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Decision Time:</strong></td>
-                            <td style="padding: 8px;">{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Status:</strong></td>
-                            <td style="padding: 8px;">
-                                <span style="background: {status_bg}; color: {status_color}; padding: 4px 12px; border-radius: 20px; font-weight: bold;">
-                                    {status_text.upper()}
-                                </span>
-                            </td>
-                        </tr>
-                    </table>
+                    <h3 style="margin-top: 0; color: #673ab7;">Employee Details</h3>
+                    <p><strong>Employee Name:</strong> {employee_name}</p>
+                    <p><strong>Employee Email:</strong> {employee_email if employee_email else 'Not provided'}</p>
+                    <p><strong>Decision:</strong> <span style="color: {'#4caf50' if status == 'Approved' else '#f44336'}; font-weight: bold;">{status}</span></p>
+                    <p><strong>Approval Code Used:</strong> {approval_password}</p>
+                    <p><strong>Decision Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
                 </div>
                 
-                <p><strong>Note:</strong> The employee has been notified of your decision via email.</p>
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3;">
+                    <h4 style="margin-top: 0; color: #0d47a1;">📋 Notification Status:</h4>
+                    <ul>
+                        <li>✅ Decision recorded in system</li>
+                        <li>{'✅' if employee_email and '@' in employee_email else '❌'} Email sent to employee</li>
+                        <li>✅ This confirmation email sent to you</li>
+                    </ul>
+                </div>
                 
                 <div class="footer">
                     VOLAR FASHION PVT LTD - HR Department<br>
                     📧 hrvolarfashion@gmail.com<br>
-                    This is an automated message.
+                    This is an automated confirmation.
                 </div>
             </div>
         </body>
         </html>
         """
         
-        msg.attach(MIMEText(html_body, 'html'))
+        msg_superior.attach(MIMEText(html_body_superior, 'html'))
+        
+        # ============================================
+        # SEND ALL EMAILS
+        # ============================================
         
         # Create SMTP connection
-        log_debug(f"Creating SMTP connection for superior confirmation to {superior_email}")
         server, method = create_smtp_connection(sender_email, sender_password)
         
         if server:
             try:
-                log_debug(f"Sending superior confirmation via {method}...")
-                server.sendmail(sender_email, superior_email, msg.as_string())
+                # Send email to superior
+                server.sendmail(sender_email, superior_email, msg_superior.as_string())
+                log_debug(f"✓ Decision confirmation sent to superior: {superior_email}")
+                
+                # Send email to employee if email is valid
+                if employee_email and "@" in employee_email:
+                    try:
+                        server.sendmail(sender_email, employee_email, msg_employee.as_string())
+                        log_debug(f"✓ Decision notification sent to employee: {employee_email}")
+                    except Exception as e:
+                        log_debug(f"Could not send decision email to employee: {str(e)}")
+                        # Continue anyway
+                
                 server.quit()
-                log_debug(f"✓ Superior confirmation sent to {superior_email}")
                 return True
+                
             except Exception as e:
                 server.quit()
                 error_msg = str(e)
-                log_debug(f"Failed to send superior confirmation: {error_msg}")
+                log_debug(f"Failed to send decision emails: {error_msg}")
                 return False
         else:
-            log_debug(f"Could not establish SMTP connection for superior confirmation")
+            log_debug(f"Could not establish SMTP connection for decision emails: {method}")
             return False
             
     except Exception as e:
         error_msg = str(e)
-        log_debug(f"Error in send_superior_decision_confirmation: {traceback.format_exc()}")
-        return False
-
-def send_employee_decision_notification(employee_name, employee_email, superior_name, cluster_index, status, cluster_data):
-    """Send notification email to employee when their leave is approved/rejected"""
-    try:
-        log_debug(f"Sending decision notification to employee: {employee_email}")
-        
-        # Get email credentials
-        sender_email, sender_password, source = get_email_credentials()
-        
-        if not sender_email or not sender_password:
-            log_debug("Email credentials missing for employee notification")
-            return False
-            
-        # Check if it's a valid email
-        if "@" not in employee_email or "." not in employee_email:
-            log_debug(f"Invalid employee email format: {employee_email}")
-            return False
-        
-        # Create email message
-        msg = MIMEMultipart('alternative')
-        msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
-        msg['To'] = employee_email
-        
-        status_text = "Approved" if status == "Approved" else "Rejected"
-        status_color = "#28a745" if status == "Approved" else "#dc3545"
-        status_bg = "#d4edda" if status == "Approved" else "#f8d7da"
-        status_icon = "✅" if status == "Approved" else "❌"
-        
-        if 'is_cluster' in cluster_data and cluster_data['is_cluster']:
-            msg['Subject'] = f"Leave {status_text}: Period {cluster_index} - {status_text}"
-        else:
-            msg['Subject'] = f"Leave {status_text}: Your request has been {status_text}"
-        
-        days = calculate_days(cluster_data['from_date'], cluster_data['till_date'], cluster_data['leave_type'])
-        days_display = "N/A" if cluster_data['leave_type'] == "Early Exit" else (f"{days} days" if cluster_data['leave_type'] == "Full Day" else "0.5 day")
-        
-        # HTML email body
-        html_body = f"""
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
-                .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
-                .header {{ background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }}
-                .status-box {{ background: {status_bg}; padding: 30px; border-radius: 10px; margin: 20px 0; border-left: 4px solid {status_color}; text-align: center; }}
-                .info-box {{ background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0; }}
-                .details-box {{ background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196f3; }}
-                .footer {{ color: #666; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h2 style="margin: 0;">Leave Request Update</h2>
-                    <p style="margin: 5px 0 0 0; opacity: 0.9;">VOLAR FASHION HR System</p>
-                </div>
-                
-                <p>Dear {employee_name},</p>
-                
-                <div class="status-box">
-                    <div style="font-size: 48px; margin-bottom: 15px;">{status_icon}</div>
-                    <h2 style="margin: 0; color: {status_color};">{status_text.upper()}</h2>
-                    <p style="font-size: 18px; margin-top: 10px;">
-                        Your leave request has been <strong>{status_text.lower()}</strong> by {superior_name}.
-                    </p>
-                </div>
-                
-                <div class="info-box">
-                    <h4 style="margin-top: 0; color: #673ab7;">Decision Summary</h4>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px; width: 40%;"><strong>Approved By:</strong></td>
-                            <td style="padding: 8px;">{superior_name}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Decision Time:</strong></td>
-                            <td style="padding: 8px;">{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Status:</strong></td>
-                            <td style="padding: 8px;">
-                                <span style="background: {status_bg}; color: {status_color}; padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 14px;">
-                                    {status_text.upper()}
-                                </span>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-                
-                <div class="details-box">
-                    <h4 style="margin-top: 0; color: #1976d2;">Leave Details</h4>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px; width: 40%;"><strong>Period:</strong></td>
-                            <td style="padding: 8px;">{cluster_index}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Leave Type:</strong></td>
-                            <td style="padding: 8px;">{cluster_data['leave_type']}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>From Date:</strong></td>
-                            <td style="padding: 8px;">{cluster_data['from_date']}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Till Date:</strong></td>
-                            <td style="padding: 8px;">{cluster_data['till_date']}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Duration:</strong></td>
-                            <td style="padding: 8px;">{days_display}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px;"><strong>Purpose:</strong></td>
-                            <td style="padding: 8px;">{cluster_data.get('purpose', 'N/A')}</td>
-                        </tr>
-                    </table>
-                </div>
-                
-                <p>{"You can now proceed with your leave plans as approved." if status == "Approved" else "Please contact your manager if you need to discuss alternative arrangements."}</p>
-                
-                <div class="footer">
-                    VOLAR FASHION PVT LTD - HR Department<br>
-                    📧 hrvolarfashion@gmail.com<br>
-                    This is an automated message.
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        msg.attach(MIMEText(html_body, 'html'))
-        
-        # Create SMTP connection
-        log_debug(f"Creating SMTP connection for employee notification to {employee_email}")
-        server, method = create_smtp_connection(sender_email, sender_password)
-        
-        if server:
-            try:
-                log_debug(f"Sending employee notification via {method}...")
-                server.sendmail(sender_email, employee_email, msg.as_string())
-                server.quit()
-                log_debug(f"✓ Employee notification sent to {employee_email}")
-                return True
-            except Exception as e:
-                server.quit()
-                error_msg = str(e)
-                log_debug(f"Failed to send employee notification: {error_msg}")
-                return False
-        else:
-            log_debug(f"Could not establish SMTP connection for employee notification")
-            return False
-            
-    except Exception as e:
-        error_msg = str(e)
-        log_debug(f"Error in send_employee_decision_notification: {traceback.format_exc()}")
-        return False
-
-def save_to_google_sheets(sheet, row_data):
-    """Save data to Google Sheets with error handling"""
-    try:
-        log_debug(f"Attempting to save row to Google Sheets: {row_data[:5]}...")
-        
-        # Append the row to the sheet
-        sheet.append_row(row_data)
-        log_debug(f"Successfully saved row to Google Sheets")
-        return True
-        
-    except Exception as e:
-        log_debug(f"Error saving to Google Sheets: {str(e)}")
-        log_debug(f"Row data that failed: {row_data}")
+        log_debug(f"Error in send_decision_emails: {traceback.format_exc()}")
         return False
 
 def update_leave_status(sheet, approval_password, status):
     """Update leave status in Google Sheet using only approval password"""
     try:
-        log_debug(f"Looking for approval code: {approval_password}")
-        
         all_records = sheet.get_all_values()
-        log_debug(f"Total records in sheet: {len(all_records)}")
         
         for idx, row in enumerate(all_records):
             if idx == 0:  # Skip header
                 continue
             
-            if len(row) > 14 and row[14].strip() == approval_password.strip():
-                log_debug(f"Found matching code at row {idx + 1}")
+            if len(row) > 14 and row[14] == approval_password:  # Column 15 is approval code
+                # Update status
+                sheet.update_cell(idx + 1, 12, status)  # Status column (12)
+                sheet.update_cell(idx + 1, 13, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date (13)
+                sheet.update_cell(idx + 1, 15, "USED")  # Mark password as used (15)
                 
-                # Get employee details for email notification
-                employee_name = row[1] if len(row) > 1 else ""  # Column B
-                employee_email = row[2] if len(row) > 2 else ""  # Column C - NEW EMAIL FIELD
-                superior_name = row[10] if len(row) > 10 else ""  # Column K
-                superior_email = row[11] if len(row) > 11 else ""  # Column L
+                # Get employee and superior info for email
+                employee_name = row[1] if len(row) > 1 else ""
+                employee_email = row[3] if len(row) > 3 else ""
+                superior_name = row[10] if len(row) > 10 else ""
+                superior_email = row[11] if len(row) > 11 else ""
                 
-                # Get cluster details
-                is_cluster = row[15] if len(row) > 15 else "No"  # Column P
-                cluster_number = row[16] if len(row) > 16 else "1"  # Column Q
-                
-                # Get leave details for the email
-                leave_details = {
-                    'leave_type': row[5] if len(row) > 5 else "",  # Column F
-                    'from_date': row[7] if len(row) > 7 else "",  # Column H
-                    'till_date': row[8] if len(row) > 8 else "",  # Column I
-                    'purpose': row[6] if len(row) > 6 else "",  # Column G
-                    'is_cluster': is_cluster
-                }
-                
-                # Update status in sheet
-                sheet.update_cell(idx + 1, 13, status)  # Status column (Column M - index 13)
-                sheet.update_cell(idx + 1, 14, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date (Column N - index 14)
-                sheet.update_cell(idx + 1, 15, "USED")  # Mark password as used (Column O - index 15)
+                # Get cluster info for email
+                cluster_info = None
+                if len(row) > 7:
+                    cluster_info = {
+                        'leave_type': row[5] if len(row) > 5 else "",
+                        'from_date': row[7] if len(row) > 7 else "",
+                        'till_date': row[8] if len(row) > 8 else ""
+                    }
                 
                 log_debug(f"Updated row {idx + 1} to status: {status}")
                 
-                # Send email notifications
-                if email_config["configured"]:
-                    # 1. Send confirmation to superior
-                    send_superior_decision_confirmation(
-                        superior_name, superior_email, 
-                        employee_name, cluster_number, status, approval_password
-                    )
-                    
-                    # 2. Send notification to employee
-                    send_employee_decision_notification(
-                        employee_name, employee_email,
-                        superior_name, cluster_number, status, leave_details
-                    )
+                # Send decision emails
+                send_decision_emails(
+                    employee_name, employee_email, 
+                    superior_name, superior_email,
+                    approval_password, status, cluster_info
+                )
                 
                 return True
         
-        log_debug("No matching record found for approval code")
+        log_debug("No matching record found for approval")
         return False
         
     except Exception as e:
@@ -2376,13 +2292,7 @@ if st.sidebar.button("🔗 Test Google Sheets Connection"):
             if sheet:
                 st.success("✅ Connected successfully!")
                 st.info(f"Sheet: Leave_Applications")
-                try:
-                    data = sheet.get_all_values()
-                    st.info(f"Rows: {len(data)}")
-                    if len(data) > 0:
-                        st.info(f"Headers: {data[0]}")
-                except:
-                    st.info("Could not read sheet data")
+                st.info(f"Rows: {sheet.row_count}")
             else:
                 st.error("❌ Connection failed")
 
@@ -2556,8 +2466,8 @@ with tab1:
     if st.session_state.reset_form_tab1:
         st.session_state.form_data_tab1 = {
             'employee_name': '',
-            'employee_email': '',
             'employee_code': '',
+            'employee_email': '',
             'department': 'Select Department',
             'purpose': '',
             'superior_name': 'Select Manager',
@@ -2573,8 +2483,8 @@ with tab1:
         st.session_state.cluster_codes = {}
         st.session_state.reset_form_tab1 = False
     
-    # Two-column layout for basic info
-    col1, col2 = st.columns([1, 1], gap="large")
+    # Three-column layout for basic info
+    col1, col2, col3 = st.columns([1, 1, 1], gap="large")
     
     with col1:
         employee_name = st.text_input(
@@ -2583,13 +2493,6 @@ with tab1:
             placeholder="Enter your full name",
             help="Please enter your complete name as per company records",
             key="employee_name_input"
-        )
-        employee_email = st.text_input(
-            "📧 Email Address",
-            value=st.session_state.form_data_tab1['employee_email'],
-            placeholder="your.email@company.com",
-            help="Your email address for notifications",
-            key="employee_email_input"
         )
     
     with col2:
@@ -2600,6 +2503,20 @@ with tab1:
             help="Your unique employee identification code",
             key="employee_code_input"
         )
+    
+    with col3:
+        employee_email = st.text_input(
+            "📧 Email Address",
+            value=st.session_state.form_data_tab1['employee_email'],
+            placeholder="your.email@company.com",
+            help="Your email address to receive notifications",
+            key="employee_email_input"
+        )
+    
+    # Department and cluster option in new row
+    col4, col5 = st.columns([1, 1], gap="large")
+    
+    with col4:
         department = st.selectbox(
             "🏛️ Department",
             ["Select Department"] + DEPARTMENTS,
@@ -2608,13 +2525,14 @@ with tab1:
             key="department_select"
         )
     
-    # Cluster Holiday Option
-    is_cluster = st.checkbox(
-        "Is this a Cluster Holiday? (Multiple leave periods)",
-        value=st.session_state.form_data_tab1['is_cluster'],
-        help="Check this if you need to apply for multiple separate leave periods in one application",
-        key="is_cluster_checkbox"
-    )
+    with col5:
+        # Cluster Holiday Option
+        is_cluster = st.checkbox(
+            "Is this a Cluster Holiday? (Multiple leave periods)",
+            value=st.session_state.form_data_tab1['is_cluster'],
+            help="Check this if you need to apply for multiple separate leave periods in one application",
+            key="is_cluster_checkbox"
+        )
     
     # CLUSTER HOLIDAY SECTION
     if is_cluster:
@@ -2627,7 +2545,8 @@ with tab1:
                         <p style="margin: 5px 0 0 0; color: #4dabf7; font-size: 0.95rem;">
                             Add multiple leave periods below (each will have separate approval code)
                         </p>
-               
+                    </div>
+                </div>
             </div>
         """, unsafe_allow_html=True)
         
@@ -2845,7 +2764,6 @@ with tab1:
                         <div style="font-size: 0.9rem; color: #805ad5;">
                             working days
                         </div>
-                     
                     </div>
                 """, unsafe_allow_html=True)
     
@@ -2892,14 +2810,14 @@ with tab1:
             validation_passed = True
             error_messages = []
             
-            # Check basic required fields including email
-            if not all([employee_name, employee_email, employee_code, department != "Select Department", 
+            # Check basic required fields
+            if not all([employee_name, employee_code, employee_email, department != "Select Department", 
                         purpose, superior_name != "Select Manager"]):
                 validation_passed = False
                 error_messages.append("Please complete all required fields")
             
             # Validate email format
-            if employee_email and "@" not in employee_email:
+            if employee_email and ("@" not in employee_email or "." not in employee_email):
                 validation_passed = False
                 error_messages.append("Please enter a valid email address")
             
@@ -2929,28 +2847,26 @@ with tab1:
                     submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     superior_email = SUPERIORS[superior_name]
                     
-                    # Connect to Google Sheets
+                    # Connect to Google Sheets first
                     sheet = setup_google_sheets()
                     
                     if sheet:
                         try:
-                            # Generate unique codes for each cluster
+                            # Generate unique codes for each cluster (WITH DUPLICATE CHECKING)
                             cluster_codes = {}
-                            submission_success = True
-                            submission_errors = []
+                            for i in range(len(st.session_state.clusters)):
+                                # Generate code with duplicate checking
+                                code = generate_approval_password(sheet)
+                                cluster_codes[i] = code
+                                log_debug(f"Generated unique code for period {i+1}: {code}")
                             
                             # Submit each cluster as separate row
                             for i, cluster in enumerate(st.session_state.clusters):
-                                # Generate code
-                                code = generate_approval_password()
-                                cluster_codes[i] = code
-                                log_debug(f"Generated code for period {i+1}: {code}")
-                                
                                 # Prepare leave details
                                 leave_details = {
                                     "employee_name": employee_name,
-                                    "employee_email": employee_email,
                                     "employee_code": employee_code,
+                                    "employee_email": employee_email,
                                     "department": department,
                                     "leave_type": cluster['leave_type'],
                                     "no_of_days": calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type']),
@@ -2963,8 +2879,8 @@ with tab1:
                                 row_data = [
                                     submission_date,
                                     employee_name,
-                                    employee_email,  # NEW: Employee email
                                     employee_code,
+                                    employee_email,
                                     department,
                                     cluster['leave_type'],
                                     str(leave_details['no_of_days']),
@@ -2973,41 +2889,22 @@ with tab1:
                                     leave_details['till_date'],
                                     superior_name,
                                     superior_email,
-                                    "Pending",  # Status
+                                    "Pending",
                                     "",  # Approval Date (empty initially)
-                                    code,  # Approval code
-                                    "Yes" if is_cluster else "No",  # Is Cluster
-                                    str(i+1) if is_cluster else "1"  # Cluster number
+                                    cluster_codes[i],  # Unique code for this cluster
+                                    "Yes" if is_cluster else "No",
+                                    i+1 if is_cluster else ""  # Cluster number
                                 ]
                                 
                                 # Write to Google Sheets
-                                success = save_to_google_sheets(sheet, row_data)
-                                if not success:
-                                    submission_success = False
-                                    submission_errors.append(f"Failed to save period {i+1}")
-                                else:
-                                    log_debug(f"Successfully saved period {i+1} with code: {code}")
+                                sheet.append_row(row_data)
+                                log_debug(f"Data written to Google Sheets for {employee_name} - Period {i+1} - Code: {cluster_codes[i]}")
                             
-                            if not submission_success:
-                                st.markdown(f'''
-                                    <div class="error-message">
-                                        <div style="display: flex; align-items: center; justify-content: center;">
-                                            <div style="font-size: 1.5rem; margin-right: 10px;">❌</div>
-                                            <div>
-                                                <strong>Submission Error</strong><br>
-                                                Failed to save some periods to database.<br>
-                                                Errors: {', '.join(submission_errors)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ''', unsafe_allow_html=True)
-                                return
-                            
-                            # Send email notifications if configuration is working
-                            email_operations = []
+                            # Try to send email only if configuration is working
+                            email_sent = False
+                            email_error = ""
                             
                             if email_config["configured"]:
-                                # 1. Send confirmation to employee
                                 try:
                                     # Prepare clusters data for email
                                     clusters_for_email = []
@@ -3018,65 +2915,35 @@ with tab1:
                                         cluster_copy['purpose'] = purpose
                                         clusters_for_email.append(cluster_copy)
                                     
-                                    employee_confirmation_sent = send_employee_submission_confirmation(
-                                        employee_name,
-                                        employee_email,
-                                        superior_name,
-                                        clusters_for_email
-                                    )
-                                    email_operations.append(("Employee Confirmation", employee_confirmation_sent))
-                                except Exception as e:
-                                    log_debug(f"Error sending employee confirmation: {str(e)}")
-                                    email_operations.append(("Employee Confirmation", False))
-                                
-                                # 2. Send approval request to superior
-                                try:
-                                    superior_email_sent = send_approval_email(
+                                    email_sent = send_approval_email(
                                         employee_name,
                                         superior_name,
                                         superior_email,
+                                        employee_email,
                                         clusters_for_email,
                                         cluster_codes
                                     )
-                                    email_operations.append(("Superior Notification", superior_email_sent))
+                                    if not email_sent:
+                                        email_error = "Email sending failed - check debug logs"
                                 except Exception as e:
-                                    log_debug(f"Error sending superior notification: {str(e)}")
-                                    email_operations.append(("Superior Notification", False))
+                                    email_error = f"Email exception: {str(e)}"
+                                    log_debug(f"Email exception: {traceback.format_exc()}")
                             
-                            # Check if any email was sent successfully
-                            any_email_sent = any(success for _, success in email_operations) if email_operations else False
-                            
-                            if any_email_sent:
-                                # Show success message
-                                success_html = '''
+                            if email_sent:
+                                st.markdown('''
                                     <div class="success-message">
                                         <div style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
                                         <div style="font-size: 1.5rem; font-weight: 600; margin-bottom: 10px; color: #166534;">
                                             Application Submitted Successfully!
                                         </div>
                                         <div style="color: #155724; margin-bottom: 15px;">
-                                            Your leave request has been submitted and notifications have been sent.
+                                            Your leave request has been sent to your manager for approval.
                                         </div>
-                                '''
-                                
-                                # Add email status details
-                                if email_operations:
-                                    success_html += '<div style="background: rgba(255,255,255,0.5); padding: 10px; border-radius: 8px; margin: 10px 0;">'
-                                    success_html += '<div style="font-size: 0.9rem; color: #0f5132;"><strong>Email Notifications:</strong></div>'
-                                    for operation, success in email_operations:
-                                        status_icon = "✅" if success else "⚠️"
-                                        status_text = "Sent" if success else "Not Sent"
-                                        success_html += f'<div style="font-size: 0.85rem; margin: 5px 0;">{status_icon} {operation}: {status_text}</div>'
-                                    success_html += '</div>'
-                                
-                                success_html += '''
                                         <div style="font-size: 0.95rem; color: #0f5132; opacity: 0.9;">
-                                            You will receive another email once your manager makes a decision.
+                                            Confirmation email sent to your email address.
                                         </div>
                                     </div>
-                                '''
-                                
-                                st.markdown(success_html, unsafe_allow_html=True)
+                                ''', unsafe_allow_html=True)
                                 
                                 st.balloons()
                                 # Clear generated codes for this session
@@ -3097,8 +2964,8 @@ with tab1:
                                             <div>
                                                 <strong style="display: block; margin-bottom: 8px; color: #ff9800;">Email Notification Issue</strong>
                                                 Your application was saved to the database successfully!<br>
-                                                However, we couldn't send the email notifications automatically.<br>
-                                                <small>Check your email configuration in the sidebar.</small>
+                                                However, we couldn't send the email notification automatically.<br>
+                                                <small>{email_error}</small>
                                             </div>
                                         </div>
                                     </div>
@@ -3335,7 +3202,7 @@ with tab2:
                                     The leave request has been <strong>{status.lower()}</strong>.
                                 </div>
                                 <div style="font-size: 0.95rem; opacity: 0.9;">
-                                    Both you and the employee have been notified via email.
+                                    Notification emails have been sent to the employee and yourself.
                                 </div>
                             </div>
                         ''', unsafe_allow_html=True)
@@ -3378,8 +3245,7 @@ with tab3:
             <div class="icon-badge" style="background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);">📅</div>
             <div>
                 <h3 style="margin: 0;">Company Holidays 2026</h3>
-              
-            
+            </div>
         </div>
     """, unsafe_allow_html=True)
     
