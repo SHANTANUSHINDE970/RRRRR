@@ -1048,8 +1048,7 @@ SUPERIORS = {
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
     "Manish Gupta": "Manish@vfemails.com",
-    "Shantanu Shinde": "s37@vfemails.com",
-    "d":"Shinde78617@gmail.com"
+    "Shantanu Shinde": "s37@vfemails.com"
     
 }
 
@@ -1148,6 +1147,7 @@ def get_existing_codes_from_sheet(sheet):
     """Get all existing approval codes from Google Sheets"""
     try:
         if not sheet:
+            log_debug("No sheet provided to get existing codes")
             return set()
         
         all_records = sheet.get_all_values()
@@ -1156,8 +1156,10 @@ def get_existing_codes_from_sheet(sheet):
         for idx, row in enumerate(all_records):
             if idx == 0:  # Skip header
                 continue
-            if len(row) > 13 and row[13]:  # Column 14 is approval code
-                existing_codes.add(row[13])
+            if len(row) > 14 and row[14]:  # Column 15 is approval code (0-indexed)
+                code = row[14].strip()
+                if code and code != "USED":
+                    existing_codes.add(code)
         
         log_debug(f"Found {len(existing_codes)} existing codes in sheet")
         return existing_codes
@@ -1166,73 +1168,23 @@ def get_existing_codes_from_sheet(sheet):
         log_debug(f"Error getting existing codes: {str(e)}")
         return set()
 
-def generate_approval_password(sheet=None):
+def generate_approval_password():
     """Generate a UNIQUE 5-digit alphanumeric password"""
-    
-    # Get alphabet without confusing characters
-    alphabet = string.ascii_uppercase + string.digits
-    alphabet = alphabet.replace('0', '').replace('O', '').replace('1', '').replace('I', '').replace('L', '')
-    
-    # Get existing codes
-    existing_codes = set()
-    if sheet:
-        existing_codes = get_existing_codes_from_sheet(sheet)
-    # Also check session state generated codes
-    existing_codes.update(st.session_state.generated_codes)
-    
-    max_attempts = 20  # Prevent infinite loop
-    for attempt in range(max_attempts):
+    try:
+        # Simple alphabet without confusing characters
+        alphabet = string.ascii_uppercase.replace('O', '').replace('I', '').replace('L', '') + '23456789'
+        
         # Generate random code
         password = ''.join(secrets.choice(alphabet) for _ in range(5))
         
-        # Check if code is unique
-        if password not in existing_codes:
-            st.session_state.generated_codes.add(password)
-            log_debug(f"Generated unique approval password: {password} (attempt {attempt + 1})")
-            return password
-    
-    # If we couldn't generate a unique random code after max attempts
-    # Use timestamp-based fallback method
-    log_debug(f"Could not generate unique random code after {max_attempts} attempts, using fallback method")
-    
-    # Fallback: Use timestamp + random suffix
-    timestamp = int(time.time() * 1000)  # Milliseconds
-    base36 = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
-    
-    # Convert timestamp to base-36
-    code = ""
-    temp_timestamp = timestamp
-    while temp_timestamp > 0 and len(code) < 3:
-        temp_timestamp, remainder = divmod(temp_timestamp, 36)
-        code = base36[remainder] + code
-    
-    # Add random characters to make 5 characters
-    while len(code) < 5:
-        code = code + secrets.choice(base36)
-    
-    # Ensure uniqueness by checking again
-    if code not in existing_codes:
-        st.session_state.generated_codes.add(code)
-        log_debug(f"Generated fallback unique code: {code}")
-        return code
-    else:
-        # Last resort: add incremental number
-        for i in range(1, 100):
-            fallback_code = f"{code[:4]}{i}"
-            if fallback_code not in existing_codes:
-                st.session_state.generated_codes.add(fallback_code)
-                log_debug(f"Generated incremental fallback code: {fallback_code}")
-                return fallback_code
-    
-    # Absolute last resort (should never happen)
-    final_code = str(uuid.uuid4().int)[:5].upper()
-    final_code = ''.join([c for c in final_code if c in alphabet])
-    while len(final_code) < 5:
-        final_code = final_code + secrets.choice(alphabet)
-    
-    st.session_state.generated_codes.add(final_code)
-    log_debug(f"Generated UUID-based fallback code: {final_code}")
-    return final_code
+        log_debug(f"Generated approval password: {password}")
+        return password
+        
+    except Exception as e:
+        log_debug(f"Error generating password: {str(e)}")
+        # Fallback simple method
+        import random
+        return str(random.randint(10000, 99999))
 
 def get_google_credentials():
     """Get Google credentials from Streamlit secrets"""
@@ -1251,24 +1203,38 @@ def get_google_credentials():
         
         log_debug(f"Loading Google credentials from {secrets_key}")
         
-        # Access each field individually (more reliable in Streamlit Cloud)
         try:
-            creds_dict = {
-                "type": st.secrets[secrets_key]["type"],
-                "project_id": st.secrets[secrets_key]["project_id"],
-                "private_key_id": st.secrets[secrets_key]["private_key_id"],
-                "private_key": st.secrets[secrets_key]["private_key"],
-                "client_email": st.secrets[secrets_key]["client_email"],
-                "client_id": st.secrets[secrets_key]["client_id"],
-                "auth_uri": st.secrets[secrets_key]["auth_uri"],
-                "token_uri": st.secrets[secrets_key]["token_uri"],
-                "auth_provider_x509_cert_url": st.secrets[secrets_key]["auth_provider_x509_cert_url"],
-                "client_x509_cert_url": st.secrets[secrets_key]["client_x509_cert_url"]
-            }
-        except KeyError as e:
-            log_debug(f"Missing key in {secrets_key}: {str(e)}")
-            st.error(f"❌ Missing credential field: {str(e)}")
-            return None
+            # Get the credentials JSON string
+            creds_json = st.secrets[secrets_key]
+            
+            # If it's a string, parse it as JSON
+            if isinstance(creds_json, str):
+                import json
+                creds_dict = json.loads(creds_json)
+            else:
+                # If it's already a dict
+                creds_dict = creds_json
+                
+        except Exception as e:
+            log_debug(f"Error parsing credentials: {str(e)}")
+            # Try to access each field individually
+            try:
+                creds_dict = {
+                    "type": st.secrets[secrets_key]["type"],
+                    "project_id": st.secrets[secrets_key]["project_id"],
+                    "private_key_id": st.secrets[secrets_key]["private_key_id"],
+                    "private_key": st.secrets[secrets_key]["private_key"],
+                    "client_email": st.secrets[secrets_key]["client_email"],
+                    "client_id": st.secrets[secrets_key]["client_id"],
+                    "auth_uri": st.secrets[secrets_key]["auth_uri"],
+                    "token_uri": st.secrets[secrets_key]["token_uri"],
+                    "auth_provider_x509_cert_url": st.secrets[secrets_key]["auth_provider_x509_cert_url"],
+                    "client_x509_cert_url": st.secrets[secrets_key]["client_x509_cert_url"]
+                }
+            except KeyError as e:
+                log_debug(f"Missing key in {secrets_key}: {str(e)}")
+                st.error(f"❌ Missing credential field: {str(e)}")
+                return None
         
         # Fix private key formatting if needed
         private_key = creds_dict.get("private_key", "")
@@ -1285,8 +1251,7 @@ def get_google_credentials():
                     creds_dict["private_key"] = f"-----BEGIN PRIVATE KEY-----\n{private_key}\n-----END PRIVATE KEY-----"
                     log_debug("Added BEGIN/END headers to private key")
         
-        log_debug(f"Credentials loaded for: {creds_dict['client_email']}")
-        
+        log_debug(f"Credentials loaded for: {creds_dict.get('client_email', 'Unknown')}")
         return creds_dict
             
     except Exception as e:
@@ -1299,8 +1264,10 @@ def setup_google_sheets():
     try:
         log_debug("Setting up Google Sheets connection...")
         
-        SCOPES = ['https://spreadsheets.google.com/feeds', 
-                 'https://www.googleapis.com/auth/drive']
+        SCOPES = [
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/drive'
+        ]
         
         # Get credentials
         creds_dict = get_google_credentials()
@@ -1320,7 +1287,8 @@ def setup_google_sheets():
             log_debug("Successfully created ServiceAccountCredentials")
         except Exception as cred_error:
             log_debug(f"Error creating credentials: {str(cred_error)}")
-            raise cred_error
+            st.error(f"❌ Error creating credentials: {str(cred_error)}")
+            return None
         
         # Authorize client
         client = gspread.authorize(creds)
@@ -1332,9 +1300,13 @@ def setup_google_sheets():
             sheet = spreadsheet.sheet1
             log_debug(f"Successfully connected to sheet: {SHEET_NAME}")
             
-            # Check if headers exist, add them if not
+            # Check if sheet has data
             try:
-                if sheet.row_count == 0 or not sheet.row_values(1):
+                data = sheet.get_all_values()
+                log_debug(f"Sheet has {len(data)} rows")
+                
+                # If sheet is empty or missing headers, add them
+                if len(data) == 0 or not data[0]:
                     headers = [
                         "Submission Date", "Employee Name", "Employee Email", "Employee Code", "Department",
                         "Type of Leave", "No of Days", "Purpose of Leave", "From Date",
@@ -1342,9 +1314,12 @@ def setup_google_sheets():
                         "Approval Date", "Approval Password", "Is Cluster Holiday", "Cluster Number"
                     ]
                     sheet.append_row(headers)
-                    log_debug("Added headers to sheet")
+                    log_debug("Added headers to empty sheet")
+                else:
+                    log_debug(f"Headers found: {data[0]}")
+                    
             except Exception as e:
-                log_debug(f"Warning: Could not check/add headers: {str(e)}")
+                log_debug(f"Error checking sheet data: {str(e)}")
             
             return sheet
             
@@ -1354,6 +1329,7 @@ def setup_google_sheets():
             return None
         except Exception as e:
             st.error(f"❌ Error accessing sheet: {str(e)}")
+            log_debug(f"Sheet access error: {traceback.format_exc()}")
             return None
         
     except Exception as e:
@@ -2268,21 +2244,41 @@ def send_employee_decision_notification(employee_name, employee_email, superior_
         log_debug(f"Error in send_employee_decision_notification: {traceback.format_exc()}")
         return False
 
+def save_to_google_sheets(sheet, row_data):
+    """Save data to Google Sheets with error handling"""
+    try:
+        log_debug(f"Attempting to save row to Google Sheets: {row_data[:5]}...")
+        
+        # Append the row to the sheet
+        sheet.append_row(row_data)
+        log_debug(f"Successfully saved row to Google Sheets")
+        return True
+        
+    except Exception as e:
+        log_debug(f"Error saving to Google Sheets: {str(e)}")
+        log_debug(f"Row data that failed: {row_data}")
+        return False
+
 def update_leave_status(sheet, approval_password, status):
     """Update leave status in Google Sheet using only approval password"""
     try:
+        log_debug(f"Looking for approval code: {approval_password}")
+        
         all_records = sheet.get_all_values()
+        log_debug(f"Total records in sheet: {len(all_records)}")
         
         for idx, row in enumerate(all_records):
             if idx == 0:  # Skip header
                 continue
             
-            if len(row) > 13 and row[13] == approval_password:
+            if len(row) > 14 and row[14].strip() == approval_password.strip():
+                log_debug(f"Found matching code at row {idx + 1}")
+                
                 # Get employee details for email notification
-                employee_name = row[1]  # Column B
-                employee_email = row[2]  # Column C - NEW EMAIL FIELD
-                superior_name = row[10]  # Column K
-                superior_email = row[11]  # Column L
+                employee_name = row[1] if len(row) > 1 else ""  # Column B
+                employee_email = row[2] if len(row) > 2 else ""  # Column C - NEW EMAIL FIELD
+                superior_name = row[10] if len(row) > 10 else ""  # Column K
+                superior_email = row[11] if len(row) > 11 else ""  # Column L
                 
                 # Get cluster details
                 is_cluster = row[15] if len(row) > 15 else "No"  # Column P
@@ -2290,17 +2286,17 @@ def update_leave_status(sheet, approval_password, status):
                 
                 # Get leave details for the email
                 leave_details = {
-                    'leave_type': row[5],  # Column F
-                    'from_date': row[7],  # Column H
-                    'till_date': row[8],  # Column I
-                    'purpose': row[6],  # Column G
+                    'leave_type': row[5] if len(row) > 5 else "",  # Column F
+                    'from_date': row[7] if len(row) > 7 else "",  # Column H
+                    'till_date': row[8] if len(row) > 8 else "",  # Column I
+                    'purpose': row[6] if len(row) > 6 else "",  # Column G
                     'is_cluster': is_cluster
                 }
                 
                 # Update status in sheet
-                sheet.update_cell(idx + 1, 12, status)  # Status column (Column L)
-                sheet.update_cell(idx + 1, 13, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date (Column M)
-                sheet.update_cell(idx + 1, 14, "USED")  # Mark password as used (Column N)
+                sheet.update_cell(idx + 1, 13, status)  # Status column (Column M - index 13)
+                sheet.update_cell(idx + 1, 14, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date (Column N - index 14)
+                sheet.update_cell(idx + 1, 15, "USED")  # Mark password as used (Column O - index 15)
                 
                 log_debug(f"Updated row {idx + 1} to status: {status}")
                 
@@ -2320,7 +2316,7 @@ def update_leave_status(sheet, approval_password, status):
                 
                 return True
         
-        log_debug("No matching record found for approval")
+        log_debug("No matching record found for approval code")
         return False
         
     except Exception as e:
@@ -2380,7 +2376,13 @@ if st.sidebar.button("🔗 Test Google Sheets Connection"):
             if sheet:
                 st.success("✅ Connected successfully!")
                 st.info(f"Sheet: Leave_Applications")
-                st.info(f"Rows: {sheet.row_count}")
+                try:
+                    data = sheet.get_all_values()
+                    st.info(f"Rows: {len(data)}")
+                    if len(data) > 0:
+                        st.info(f"Headers: {data[0]}")
+                except:
+                    st.info("Could not read sheet data")
             else:
                 st.error("❌ Connection failed")
 
@@ -2927,21 +2929,23 @@ with tab1:
                     submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     superior_email = SUPERIORS[superior_name]
                     
-                    # Connect to Google Sheets first
+                    # Connect to Google Sheets
                     sheet = setup_google_sheets()
                     
                     if sheet:
                         try:
-                            # Generate unique codes for each cluster (WITH DUPLICATE CHECKING)
+                            # Generate unique codes for each cluster
                             cluster_codes = {}
-                            for i in range(len(st.session_state.clusters)):
-                                # Generate code with duplicate checking
-                                code = generate_approval_password(sheet)
-                                cluster_codes[i] = code
-                                log_debug(f"Generated unique code for period {i+1}: {code}")
+                            submission_success = True
+                            submission_errors = []
                             
                             # Submit each cluster as separate row
                             for i, cluster in enumerate(st.session_state.clusters):
+                                # Generate code
+                                code = generate_approval_password()
+                                cluster_codes[i] = code
+                                log_debug(f"Generated code for period {i+1}: {code}")
+                                
                                 # Prepare leave details
                                 leave_details = {
                                     "employee_name": employee_name,
@@ -2955,7 +2959,7 @@ with tab1:
                                     "till_date": cluster['till_date'].strftime("%Y-%m-%d")
                                 }
                                 
-                                # Prepare row data (UPDATED WITH EMPLOYEE EMAIL)
+                                # Prepare row data
                                 row_data = [
                                     submission_date,
                                     employee_name,
@@ -2969,16 +2973,35 @@ with tab1:
                                     leave_details['till_date'],
                                     superior_name,
                                     superior_email,
-                                    "Pending",
+                                    "Pending",  # Status
                                     "",  # Approval Date (empty initially)
-                                    cluster_codes[i],  # Unique code for this cluster
-                                    "Yes" if is_cluster else "No",
-                                    i+1 if is_cluster else ""  # Cluster number
+                                    code,  # Approval code
+                                    "Yes" if is_cluster else "No",  # Is Cluster
+                                    str(i+1) if is_cluster else "1"  # Cluster number
                                 ]
                                 
                                 # Write to Google Sheets
-                                sheet.append_row(row_data)
-                                log_debug(f"Data written to Google Sheets for {employee_name} - Period {i+1} - Code: {cluster_codes[i]}")
+                                success = save_to_google_sheets(sheet, row_data)
+                                if not success:
+                                    submission_success = False
+                                    submission_errors.append(f"Failed to save period {i+1}")
+                                else:
+                                    log_debug(f"Successfully saved period {i+1} with code: {code}")
+                            
+                            if not submission_success:
+                                st.markdown(f'''
+                                    <div class="error-message">
+                                        <div style="display: flex; align-items: center; justify-content: center;">
+                                            <div style="font-size: 1.5rem; margin-right: 10px;">❌</div>
+                                            <div>
+                                                <strong>Submission Error</strong><br>
+                                                Failed to save some periods to database.<br>
+                                                Errors: {', '.join(submission_errors)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ''', unsafe_allow_html=True)
+                                return
                             
                             # Send email notifications if configuration is working
                             email_operations = []
