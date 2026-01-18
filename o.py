@@ -2587,7 +2587,7 @@ with tab1:
     
     with col3:
         employee_email = st.text_input(
-            "📧 Email Address (Preferred_Address)",
+            "📧 Email Address (Preferred_Email_Address)",
             value=st.session_state.form_data_tab1['employee_email'],
             placeholder="your_email",
             help="Your email address to receive notifications",
