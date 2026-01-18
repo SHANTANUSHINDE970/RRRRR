@@ -1047,9 +1047,7 @@ SUPERIORS = {
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
     "Manish Gupta": "Manish@vfemails.com",
-    "Shantanu Shinde": "s37@vfemails.com",
-    "d":"shinde78617@gmail.com"
-    
+    "Shantanu Shinde": "s37@vfemails.com"
 }
 
 # Department options
@@ -1980,133 +1978,199 @@ def send_approval_email(employee_name, superior_name, superior_email, employee_e
         st.error(f"❌ Email sending error: {error_msg}")
         return False
 
-def send_decision_emails(employee_name, employee_email, superior_name, superior_email, approval_password, status, cluster_info=None):
-    """Send emails to employee and superior about the decision"""
+def send_decision_email_to_employee(employee_name, employee_email, superior_name, status, cluster_info=None, cluster_number=None, total_clusters=None):
+    """Send decision email to employee with detailed information"""
     try:
-        log_debug(f"Preparing to send decision emails for {employee_name}")
+        log_debug(f"Preparing to send decision email to employee: {employee_email}")
         
         # Get email credentials
         sender_email, sender_password, source = get_email_credentials()
         
         if not sender_email or not sender_password:
-            log_debug("Email credentials missing")
+            log_debug("Email credentials missing for employee decision email")
             return False
         
-        # Get app URL
-        try:
-            app_url = st.secrets["APP_URL"]
-        except:
-            app_url = "https://9yq6u8fklhfba8uggnjr7h.streamlit.app/"
+        # Check if employee email is valid
+        if not employee_email or "@" not in employee_email:
+            log_debug(f"Invalid employee email: {employee_email}")
+            return False
         
-        # ============================================
-        # EMAIL 1: TO EMPLOYEE (Decision Notification)
-        # ============================================
-        if employee_email and "@" in employee_email:
-            msg_employee = MIMEMultipart('alternative')
-            msg_employee['From'] = formataddr(("VOLAR FASHION HR", sender_email))
-            msg_employee['To'] = employee_email
+        # Create email message
+        msg = MIMEMultipart('alternative')
+        msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
+        msg['To'] = employee_email
+        
+        # Set subject based on cluster or single leave
+        if cluster_number and total_clusters and total_clusters > 1:
+            msg['Subject'] = f"Leave Period {cluster_number}/{total_clusters} {status} - {employee_name}"
+        else:
+            msg['Subject'] = f"Leave Application {status} - {employee_name}"
+        
+        # Prepare status details
+        status_display = "APPROVED ✅" if status == "Approved" else "REJECTED ❌"
+        status_color = "#4caf50" if status == "Approved" else "#f44336"
+        status_bg = "#e8f5e9" if status == "Approved" else "#ffebee"
+        status_icon = "🎉" if status == "Approved" else "📝"
+        
+        # Build cluster details section
+        cluster_details = ""
+        if cluster_info:
+            days = calculate_days(
+                datetime.strptime(cluster_info['from_date'], "%Y-%m-%d").date() if isinstance(cluster_info['from_date'], str) else cluster_info['from_date'],
+                datetime.strptime(cluster_info['till_date'], "%Y-%m-%d").date() if isinstance(cluster_info['till_date'], str) else cluster_info['till_date'],
+                cluster_info['leave_type']
+            )
+            days_display = "N/A" if cluster_info['leave_type'] == "Early Exit" else (f"{days} days" if cluster_info['leave_type'] == "Full Day" else "0.5 day")
             
-            status_display = "APPROVED ✅" if status == "Approved" else "REJECTED ❌"
-            status_color = "#4caf50" if status == "Approved" else "#f44336"
-            status_bg = "#e8f5e9" if status == "Approved" else "#ffebee"
+            from_date_str = cluster_info['from_date'].strftime('%Y-%m-%d') if hasattr(cluster_info['from_date'], 'strftime') else cluster_info['from_date']
+            till_date_str = cluster_info['till_date'].strftime('%Y-%m-%d') if hasattr(cluster_info['till_date'], 'strftime') else cluster_info['till_date']
             
-            cluster_details = ""
-            if cluster_info:
-                days = calculate_days(cluster_info['from_date'], cluster_info['till_date'], cluster_info['leave_type'])
-                days_display = "N/A" if cluster_info['leave_type'] == "Early Exit" else (f"{days} days" if cluster_info['leave_type'] == "Full Day" else "0.5 day")
-                
-                cluster_details = f"""
-                <div style="background: #f8f9ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4dabf7;">
-                    <h4 style="margin-top: 0; color: #339af0;">Leave Period Details</h4>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 5px; width: 40%;"><strong>Leave Type:</strong></td>
-                            <td style="padding: 5px;">{cluster_info['leave_type']}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 5px;"><strong>From Date:</strong></td>
-                            <td style="padding: 5px;">{cluster_info['from_date']}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 5px;"><strong>Till Date:</strong></td>
-                            <td style="padding: 5px;">{cluster_info['till_date']}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 5px;"><strong>Duration:</strong></td>
-                            <td style="padding: 5px;">{days_display}</td>
-                        </tr>
-                    </table>
-                </div>
-                """
+            cluster_label = f"Period {cluster_number}" if cluster_number and total_clusters and total_clusters > 1 else "Leave Period"
             
-            html_body_employee = f"""
-            <html>
-            <head>
-                <style>
-                    body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
-                    .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: linear-gradient(135deg, {status_color} 0%, {(status_color + '80')} 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }}
-                    .info-box {{ background: {status_bg}; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid {status_color + '40'}; }}
-                    .footer {{ color: #666; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h2 style="margin: 0;">Leave Application {status_display}</h2>
-                        <p style="margin: 5px 0 0 0; opacity: 0.9;">VOLAR FASHION HR System</p>
-                    </div>
-                    
-                    <p>Dear {employee_name},</p>
-                    
-                    <div class="info-box">
-                        <h3 style="margin-top: 0; color: {status_color};">
-                            {'🎉 Congratulations! Your leave has been APPROVED' if status == 'Approved' else '📝 Update: Your leave has been REJECTED'}
-                        </h3>
-                        
-                        <p><strong>Decision:</strong> <span style="color: {status_color}; font-weight: bold;">{status_display}</span></p>
-                        <p><strong>Approved/Rejected by:</strong> {superior_name}</p>
-                        <p><strong>Decision Date:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-                        
-                        {cluster_details}
-                        
-                        <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
-                            <p style="margin: 0;">
-                                {'✅ You can proceed with your leave plans as scheduled.' if status == 'Approved' else '❌ Please contact your manager for more information or to discuss alternative arrangements.'}
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div class="footer">
-                        VOLAR FASHION PVT LTD - HR Department<br>
-                        📧 hrvolarfashion@gmail.com<br>
-                        This is an automated notification.
-                    </div>
-                </div>
-            </body>
-            </html>
+            cluster_details = f"""
+            <div style="background: #f8f9ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4dabf7;">
+                <h4 style="margin-top: 0; color: #339af0;">{cluster_label} Details</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 5px; width: 40%;"><strong>Leave Type:</strong></td>
+                        <td style="padding: 5px;">{cluster_info['leave_type']}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px;"><strong>From Date:</strong></td>
+                        <td style="padding: 5px;">{from_date_str}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px;"><strong>Till Date:</strong></td>
+                        <td style="padding: 5px;">{till_date_str}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px;"><strong>Duration:</strong></td>
+                        <td style="padding: 5px;">{days_display}</td>
+                    </tr>
+                </table>
+            </div>
             """
+        
+        # Prepare message based on status
+        if status == "Approved":
+            status_message = f"""
+            <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4caf50;">
+                <h4 style="margin-top: 0; color: #2e7d32;">✅ Approval Confirmation</h4>
+                <p>Your leave request has been approved by your manager. You can proceed with your leave plans as scheduled.</p>
+            </div>
+            """
+        else:
+            status_message = f"""
+            <div style="background: #ffebee; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #f44336;">
+                <h4 style="margin-top: 0; color: #c62828;">❌ Rejection Notification</h4>
+                <p>Your leave request has been rejected by your manager. Please contact <strong>{superior_name}</strong> for more information or to discuss alternative arrangements.</p>
+            </div>
+            """
+        
+        # Build HTML email body
+        html_body = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+                .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, {status_color} 0%, {(status_color + '80')} 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }}
+                .info-box {{ background: {status_bg}; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid {status_color + '40'}; }}
+                .footer {{ color: #666; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2 style="margin: 0;">Leave Application {status_display}</h2>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9;">VOLAR FASHION HR System</p>
+                </div>
+                
+                <p>Dear {employee_name},</p>
+                
+                <div class="info-box">
+                    <h3 style="margin-top: 0; color: {status_color};">
+                        {status_icon} Your leave request has been {status.lower()}
+                    </h3>
+                    
+                    <p><strong>Decision:</strong> <span style="color: {status_color}; font-weight: bold;">{status_display}</span></p>
+                    <p><strong>Approved/Rejected by:</strong> {superior_name}</p>
+                    <p><strong>Decision Date:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    
+                    {cluster_details}
+                    
+                    {status_message}
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+                        <h4 style="margin-top: 0; color: #0d47a1;">📋 Next Steps:</h4>
+                        {'<p>✅ You can proceed with your leave plans as scheduled.</p>' if status == 'Approved' else '<p>❌ Please contact your manager for more information or to discuss alternative arrangements.</p>'}
+                        <p>If you have any questions, please contact the HR department.</p>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    VOLAR FASHION PVT LTD - HR Department<br>
+                    📧 hrvolarfashion@gmail.com<br>
+                    This is an automated notification.
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(html_body, 'html'))
+        
+        # Send email
+        server, method = create_smtp_connection(sender_email, sender_password)
+        
+        if server:
+            try:
+                server.sendmail(sender_email, employee_email, msg.as_string())
+                server.quit()
+                log_debug(f"✓ Decision email sent to employee: {employee_email}")
+                return True
+            except Exception as e:
+                server.quit()
+                log_debug(f"Failed to send decision email to employee: {str(e)}")
+                return False
+        else:
+            log_debug(f"Could not establish SMTP connection for employee decision email")
+            return False
             
-            msg_employee.attach(MIMEText(html_body_employee, 'html'))
+    except Exception as e:
+        error_msg = str(e)
+        log_debug(f"Error in send_decision_email_to_employee: {traceback.format_exc()}")
+        return False
+
+def send_decision_email_to_superior(employee_name, employee_email, superior_name, superior_email, status, approval_password):
+    """Send confirmation email to superior"""
+    try:
+        log_debug(f"Preparing to send decision confirmation email to superior: {superior_email}")
         
-        # ============================================
-        # EMAIL 2: TO SUPERIOR (Confirmation of Action)
-        # ============================================
-        msg_superior = MIMEMultipart('alternative')
-        msg_superior['From'] = formataddr(("VOLAR FASHION HR", sender_email))
-        msg_superior['To'] = superior_email
+        # Get email credentials
+        sender_email, sender_password, source = get_email_credentials()
         
-        msg_superior['Subject'] = f"Leave Decision Confirmation: {employee_name} - {status}"
+        if not sender_email or not sender_password:
+            log_debug("Email credentials missing for superior decision email")
+            return False
         
-        html_body_superior = f"""
+        # Create email message
+        msg = MIMEMultipart('alternative')
+        msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
+        msg['To'] = superior_email
+        
+        msg['Subject'] = f"Leave Decision Recorded: {employee_name} - {status}"
+        
+        # Build HTML email body
+        html_body = f"""
         <html>
         <head>
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
                 .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
                 .header {{ background: linear-gradient(135deg, #673ab7 0%, #9c27b0 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }}
-                .info-box {{ background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0; }}
                 .success-box {{ background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4caf50; }}
+                .info-box {{ background: #f8f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0; }}
                 .footer {{ color: #666; font-size: 12px; margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; }}
             </style>
         </head>
@@ -2121,11 +2185,11 @@ def send_decision_emails(employee_name, employee_email, superior_name, superior_
                 
                 <div class="success-box">
                     <h3 style="margin-top: 0; color: #2e7d32;">✅ Decision Successfully Recorded</h3>
-                    <p>You have successfully <strong>{status.lower()}</strong> the leave request.</p>
+                    <p>You have successfully <strong>{status.lower()}</strong> the leave request for <strong>{employee_name}</strong>.</p>
                 </div>
                 
                 <div class="info-box">
-                    <h3 style="margin-top: 0; color: #673ab7;">Employee Details</h3>
+                    <h3 style="margin-top: 0; color: #673ab7;">Decision Details</h3>
                     <p><strong>Employee Name:</strong> {employee_name}</p>
                     <p><strong>Employee Email:</strong> {employee_email if employee_email else 'Not provided'}</p>
                     <p><strong>Decision:</strong> <span style="color: {'#4caf50' if status == 'Approved' else '#f44336'}; font-weight: bold;">{status}</span></p>
@@ -2137,7 +2201,7 @@ def send_decision_emails(employee_name, employee_email, superior_name, superior_
                     <h4 style="margin-top: 0; color: #0d47a1;">📋 Notification Status:</h4>
                     <ul>
                         <li>✅ Decision recorded in system</li>
-                        <li>{'✅' if employee_email and '@' in employee_email else '❌'} Email sent to employee</li>
+                        <li>✅ Email sent to employee</li>
                         <li>✅ This confirmation email sent to you</li>
                     </ul>
                 </div>
@@ -2152,45 +2216,28 @@ def send_decision_emails(employee_name, employee_email, superior_name, superior_
         </html>
         """
         
-        msg_superior.attach(MIMEText(html_body_superior, 'html'))
+        msg.attach(MIMEText(html_body, 'html'))
         
-        # ============================================
-        # SEND ALL EMAILS
-        # ============================================
-        
-        # Create SMTP connection
+        # Send email
         server, method = create_smtp_connection(sender_email, sender_password)
         
         if server:
             try:
-                # Send email to superior
-                server.sendmail(sender_email, superior_email, msg_superior.as_string())
-                log_debug(f"✓ Decision confirmation sent to superior: {superior_email}")
-                
-                # Send email to employee if email is valid
-                if employee_email and "@" in employee_email:
-                    try:
-                        server.sendmail(sender_email, employee_email, msg_employee.as_string())
-                        log_debug(f"✓ Decision notification sent to employee: {employee_email}")
-                    except Exception as e:
-                        log_debug(f"Could not send decision email to employee: {str(e)}")
-                        # Continue anyway
-                
+                server.sendmail(sender_email, superior_email, msg.as_string())
                 server.quit()
+                log_debug(f"✓ Decision confirmation sent to superior: {superior_email}")
                 return True
-                
             except Exception as e:
                 server.quit()
-                error_msg = str(e)
-                log_debug(f"Failed to send decision emails: {error_msg}")
+                log_debug(f"Failed to send decision email to superior: {str(e)}")
                 return False
         else:
-            log_debug(f"Could not establish SMTP connection for decision emails: {method}")
+            log_debug(f"Could not establish SMTP connection for superior decision email")
             return False
             
     except Exception as e:
         error_msg = str(e)
-        log_debug(f"Error in send_decision_emails: {traceback.format_exc()}")
+        log_debug(f"Error in send_decision_email_to_superior: {traceback.format_exc()}")
         return False
 
 def update_leave_status(sheet, approval_password, status):
@@ -2206,7 +2253,6 @@ def update_leave_status(sheet, approval_password, status):
                 # Update status
                 sheet.update_cell(idx + 1, 12, status)  # Status column (12)
                 sheet.update_cell(idx + 1, 13, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date (13)
-                sheet.update_cell(idx + 1, 15, "USED")  # Mark password as used (15)
                 
                 # Get employee and superior info for email
                 employee_name = row[1] if len(row) > 1 else ""
@@ -2216,21 +2262,53 @@ def update_leave_status(sheet, approval_password, status):
                 
                 # Get cluster info for email
                 cluster_info = None
-                if len(row) > 7:
+                cluster_number = None
+                total_clusters = None
+                
+                if len(row) > 5:
                     cluster_info = {
                         'leave_type': row[5] if len(row) > 5 else "",
-                        'from_date': row[7] if len(row) > 7 else "",
-                        'till_date': row[8] if len(row) > 8 else ""
+                        'from_date': row[8] if len(row) > 8 else "",  # From Date
+                        'till_date': row[9] if len(row) > 9 else ""   # Till Date
                     }
                 
-                log_debug(f"Updated row {idx + 1} to status: {status}")
+                # Get cluster number if it's a cluster leave
+                is_cluster = row[15] if len(row) > 15 else "No"
+                if is_cluster == "Yes" and len(row) > 16:
+                    cluster_number = row[16] if row[16] else None
                 
-                # Send decision emails
-                send_decision_emails(
-                    employee_name, employee_email, 
-                    superior_name, superior_email,
-                    approval_password, status, cluster_info
-                )
+                # If it's a cluster leave, get total clusters for this employee
+                if is_cluster == "Yes" and employee_name:
+                    total_clusters = 0
+                    for record in all_records[1:]:  # Skip header
+                        if len(record) > 1 and record[1] == employee_name and record[15] == "Yes":
+                            total_clusters += 1
+                
+                log_debug(f"Updated row {idx + 1} to status: {status}")
+                log_debug(f"Employee email: {employee_email}")
+                log_debug(f"Cluster info: {cluster_info}")
+                log_debug(f"Cluster number: {cluster_number}, Total clusters: {total_clusters}")
+                
+                # Send decision email to employee
+                if employee_email and "@" in employee_email:
+                    employee_email_sent = send_decision_email_to_employee(
+                        employee_name, employee_email, superior_name, status, 
+                        cluster_info, cluster_number, total_clusters
+                    )
+                    if employee_email_sent:
+                        log_debug(f"✅ Decision email sent to employee: {employee_email}")
+                    else:
+                        log_debug(f"❌ Failed to send decision email to employee: {employee_email}")
+                
+                # Send confirmation email to superior
+                if superior_email and "@" in superior_email:
+                    superior_email_sent = send_decision_email_to_superior(
+                        employee_name, employee_email, superior_name, superior_email, status, approval_password
+                    )
+                    if superior_email_sent:
+                        log_debug(f"✅ Confirmation email sent to superior: {superior_email}")
+                    else:
+                        log_debug(f"❌ Failed to send confirmation email to superior: {superior_email}")
                 
                 return True
         
@@ -3204,7 +3282,8 @@ with tab2:
                                     The leave request has been <strong>{status.lower()}</strong>.
                                 </div>
                                 <div style="font-size: 0.95rem; opacity: 0.9;">
-                                    Notification emails have been sent to the employee and yourself.
+                                    ✅ Status email sent to employee<br>
+                                    ✅ Confirmation email sent to you
                                 </div>
                             </div>
                         ''', unsafe_allow_html=True)
