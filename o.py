@@ -1038,7 +1038,7 @@ SUPERIORS = {
     
     "Ayushi Jain": "ayushi@volarfashion.in",
     "Akshaya Shinde": "Akshaya@vfemails.com",
-    "Vitika Mehta": "vitika@volarfashion.com",
+    "Vitika Mehta": "vitika@vfemails.com",
     
     "Mohammed Tahir": "tahir@vfemails.com",
     
