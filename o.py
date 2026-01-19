@@ -1047,8 +1047,8 @@ SUPERIORS = {
     "Krishna Yadav": "Krishna@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
     "Manish Gupta": "Manish@vfemails.com",
-    "Shantanu Shinde": "s37@vfemails.com",
-    "D":"Shinde78617@gmail.com"
+    "Shantanu Shinde": "s37@vfemails.com"
+   
 }
 
 # Department options
