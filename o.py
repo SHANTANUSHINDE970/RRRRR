@@ -1049,6 +1049,7 @@ SUPERIORS = {
     "Manish Gupta": "Manish@vfemails.com",
     "Shantanu Shinde": "s37@vfemails.com"
    
+   
 }
 
 # Department options
@@ -1154,8 +1155,8 @@ def get_existing_codes_from_sheet(sheet):
         for idx, row in enumerate(all_records):
             if idx == 0:  # Skip header
                 continue
-            if len(row) > 15 and row[15]:  # Column 16 is approval code
-                existing_codes.add(row[15])
+            if len(row) > 14 and row[14]:  # Column 15 is approval code (0-indexed 14)
+                existing_codes.add(row[14])
         
         log_debug(f"Found {len(existing_codes)} existing codes in sheet")
         return existing_codes
@@ -2250,10 +2251,10 @@ def update_leave_status(sheet, approval_password, status):
             if idx == 0:  # Skip header
                 continue
             
-            if len(row) > 14 and row[14] == approval_password:  # Column 15 is approval code
+            if len(row) > 14 and row[14] == approval_password:  # Column 15 is approval code (0-indexed 14)
                 # Update status
-                sheet.update_cell(idx + 1, 12, status)  # Status column (12)
-                sheet.update_cell(idx + 1, 13, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date (13)
+                sheet.update_cell(idx + 1, 13, status)  # Status column (13) - 0-indexed 12
+                sheet.update_cell(idx + 1, 14, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date (14) - 0-indexed 13
                 
                 # Get employee and superior info for email
                 employee_name = row[1] if len(row) > 1 else ""
@@ -2943,43 +2944,56 @@ with tab1:
                             
                             # Submit each cluster as separate row
                             for i, cluster in enumerate(st.session_state.clusters):
-                                # Prepare leave details
-                                leave_details = {
-                                    "employee_name": employee_name,
-                                    "employee_code": employee_code,
-                                    "employee_email": employee_email,
-                                    "department": department,
-                                    "leave_type": cluster['leave_type'],
-                                    "no_of_days": calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type']),
-                                    "purpose": purpose,
-                                    "from_date": cluster['from_date'].strftime("%Y-%m-%d"),
-                                    "till_date": cluster['till_date'].strftime("%Y-%m-%d")
-                                }
+                                # Calculate days for this cluster
+                                no_of_days = calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type'])
                                 
-                                # Prepare row data
+                                # Prepare row data - EXACTLY 17 COLUMNS to match headers
                                 row_data = [
-                                    submission_date,
-                                    employee_name,
-                                    employee_code,
-                                    employee_email,
-                                    department,
-                                    cluster['leave_type'],
-                                    str(leave_details['no_of_days']),
-                                    purpose,
-                                    leave_details['from_date'],
-                                    leave_details['till_date'],
-                                    superior_name,
-                                    superior_email,
-                                    "Pending",
-                                    "",  # Approval Date (empty initially)
-                                    cluster_codes[i],  # Unique code for this cluster
-                                    "Yes" if is_cluster else "No",
-                                    i+1 if is_cluster else ""  # Cluster number
+                                    submission_date,  # 1. Submission Date
+                                    employee_name.strip(),  # 2. Employee Name
+                                    employee_code.strip(),  # 3. Employee Code
+                                    employee_email.strip(),  # 4. Employee email
+                                    department.strip(),  # 5. Department
+                                    cluster['leave_type'].strip(),  # 6. Type of Leave
+                                    str(no_of_days) if no_of_days is not None else "",  # 7. No of Days
+                                    purpose.strip(),  # 8. Purpose of Leave
+                                    cluster['from_date'].strftime("%Y-%m-%d"),  # 9. From Date
+                                    cluster['till_date'].strftime("%Y-%m-%d"),  # 10. To Date
+                                    superior_name.strip(),  # 11. Superior or Team leader Name
+                                    superior_email.strip(),  # 12. Superior or Team leader Email
+                                    "Pending",  # 13. Status
+                                    "",  # 14. Approval Date (empty initially)
+                                    cluster_codes[i],  # 15. Approval Password
+                                    "Yes" if is_cluster else "No",  # 16. Cluster (Yes/No)
+                                    str(i+1) if is_cluster else ""  # 17. Cluster leave Number
                                 ]
                                 
+                                # Debug: Log the row data
+                                log_debug(f"Row data for period {i+1}: {row_data}")
+                                log_debug(f"Row data length: {len(row_data)}")
+                                
+                                # Ensure we have exactly 17 columns (matching headers)
+                                if len(row_data) != 17:
+                                    log_debug(f"Warning: Row data has {len(row_data)} columns, expected 17")
+                                    # Pad with empty strings if needed
+                                    while len(row_data) < 17:
+                                        row_data.append("")
+                                    # Truncate if too long
+                                    row_data = row_data[:17]
+                                
+                                # Validate each field is a string
+                                for j, item in enumerate(row_data):
+                                    if not isinstance(item, str):
+                                        row_data[j] = str(item) if item is not None else ""
+                                
                                 # Write to Google Sheets
-                                sheet.append_row(row_data)
-                                log_debug(f"Data written to Google Sheets for {employee_name} - Period {i+1} - Code: {cluster_codes[i]}")
+                                try:
+                                    sheet.append_row(row_data)
+                                    log_debug(f"✓ Data written to Google Sheets for {employee_name} - Period {i+1} - Code: {cluster_codes[i]}")
+                                except Exception as e:
+                                    log_debug(f"Error writing to Google Sheets: {str(e)}")
+                                    st.error(f"Error writing to Google Sheets: {str(e)}")
+                                    raise
                             
                             # Try to send email only if configuration is working
                             email_sent = False
