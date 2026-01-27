@@ -2820,7 +2820,7 @@ with tab1:
                         <div class="thumbsup-emoji">👍</div>
                         <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">Early Exit Request</div>
                         <div style="font-size: 0.95rem;">
-                            You're requesting to leave early from work today. Only 1 Early Leaves are Permitted per month.
+                            You're requesting to leave early from work today. Only 1 Early Leave are Permitted per month.
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
