@@ -16,6 +16,7 @@ import ssl
 from email.utils import formataddr
 import socket
 import uuid
+import hashlib
 
 # Page configuration
 st.set_page_config(
@@ -1048,8 +1049,6 @@ SUPERIORS = {
     "Sarath Kumar": "Sarath@vfemails.com",
     "Manish Gupta": "Manish@vfemails.com",
     "Shantanu Shinde": "s37@vfemails.com"
-
-   
 }
 
 # Department options
@@ -1084,6 +1083,28 @@ HOLIDAYS_2026 = [
     {"date": "08-Nov", "day": "Sunday", "holiday": "Diwali"},
     {"date": "11-Nov", "day": "Wednesday", "holiday": "Bhai Dooj"},
     {"date": "25-Dec", "day": "Friday", "holiday": "Christmas"}
+]
+
+# Define column headers exactly as they appear in Google Sheet 1
+SHEET_COLUMNS = [
+    "Submission Date",
+    "Employee Code",
+    "Employee Name",
+    "Department",
+    "Type of Leave",
+    "No of Days",
+    "Purpose of Leave",
+    "From Date",
+    "To Date",
+    "Superior or Team leader Name",
+    "Superior or Team leader Email",
+    "Status",
+    "Approval Date",
+    "Approval Password",
+    "Cluster (Yes/No)",
+    "Cluster leave Number",
+    "Employee email",
+    "Comments"
 ]
 
 # Initialize session state
@@ -1126,6 +1147,10 @@ if 'debug_logs' not in st.session_state:
     st.session_state.debug_logs = []
 if 'generated_codes' not in st.session_state:
     st.session_state.generated_codes = set()
+if 'submission_hash' not in st.session_state:
+    st.session_state.submission_hash = None
+if 'submission_in_progress' not in st.session_state:
+    st.session_state.submission_in_progress = False
 
 def add_debug_log(message, level="INFO"):
     """Add debug log message"""
@@ -1155,8 +1180,8 @@ def get_existing_codes_from_sheet(sheet):
         for idx, row in enumerate(all_records):
             if idx == 0:  # Skip header
                 continue
-            if len(row) > 14 and row[14]:  # Column 15 is approval code (0-indexed 14)
-                existing_codes.add(row[14])
+            if len(row) > 13 and row[13]:  # Column 14 is approval code (0-indexed 13)
+                existing_codes.add(row[13])
         
         log_debug(f"Found {len(existing_codes)} existing codes in sheet")
         return existing_codes
@@ -1232,6 +1257,50 @@ def generate_approval_password(sheet=None):
     st.session_state.generated_codes.add(final_code)
     log_debug(f"Generated UUID-based fallback code: {final_code}")
     return final_code
+
+def create_submission_hash(employee_code, from_date, till_date, leave_type):
+    """Create a unique hash for the submission to detect duplicates"""
+    hash_string = f"{employee_code}_{from_date}_{till_date}_{leave_type}_{datetime.now().strftime('%Y%m%d%H')}"
+    return hashlib.md5(hash_string.encode()).hexdigest()
+
+def check_duplicate_submission(sheet, employee_code, from_date, till_date, leave_type):
+    """Check if this exact leave has already been submitted recently"""
+    try:
+        all_records = sheet.get_all_values()
+        
+        for idx, row in enumerate(all_records):
+            if idx == 0:  # Skip header
+                continue
+            
+            # Check if we have enough columns
+            if len(row) > 8:
+                sheet_emp_code = row[1] if len(row) > 1 else ""  # Employee Code is column 2 (index 1)
+                sheet_from_date = row[7] if len(row) > 7 else ""  # From Date is column 8 (index 7)
+                sheet_till_date = row[8] if len(row) > 8 else ""  # To Date is column 9 (index 8)
+                sheet_leave_type = row[4] if len(row) > 4 else ""  # Type of Leave is column 5 (index 4)
+                
+                # Format dates for comparison
+                from_date_str = from_date.strftime("%Y-%m-%d") if hasattr(from_date, 'strftime') else str(from_date)
+                till_date_str = till_date.strftime("%Y-%m-%d") if hasattr(till_date, 'strftime') else str(till_date)
+                
+                if (sheet_emp_code == employee_code and 
+                    sheet_from_date == from_date_str and 
+                    sheet_till_date == till_date_str and 
+                    sheet_leave_type == leave_type):
+                    # Check if submission was within last 24 hours
+                    if len(row) > 0 and row[0]:  # Submission Date column
+                        try:
+                            submission_time = datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+                            time_diff = datetime.now() - submission_time
+                            if time_diff.total_seconds() < 86400:  # 24 hours
+                                log_debug(f"Duplicate submission detected for {employee_code}")
+                                return True
+                        except:
+                            pass
+        return False
+    except Exception as e:
+        log_debug(f"Error checking duplicate: {str(e)}")
+        return False
 
 def get_google_credentials():
     """Get Google credentials from Streamlit secrets"""
@@ -1334,13 +1403,7 @@ def setup_google_sheets():
             # Check if headers exist, add them if not
             try:
                 if sheet.row_count == 0 or not sheet.row_values(1):
-                    headers = [
-                        "Submission Date", "Employee Name", "Employee Code", "Employee Email", "Department",
-                        "Type of Leave", "No of Days", "Purpose of Leave", "From Date",
-                        "Till Date", "Superior Name", "Superior Email", "Status", 
-                        "Approval Date", "Approval Password", "Is Cluster Holiday", "Cluster Number"
-                    ]
-                    sheet.append_row(headers)
+                    sheet.append_row(SHEET_COLUMNS)
                     log_debug("Added headers to sheet")
             except Exception as e:
                 log_debug(f"Warning: Could not check/add headers: {str(e)}")
@@ -1659,7 +1722,7 @@ def test_email_connection(test_recipient=None):
             "message": "❌ Connection Timeout",
             "details": error_msg,
             "sender": sender_email,
-            "timestamp": datetime.now().strftime("%Y-%m-d %H:%M:%S")
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         return result
     except Exception as e:
@@ -2251,39 +2314,39 @@ def update_leave_status(sheet, approval_password, status):
             if idx == 0:  # Skip header
                 continue
             
-            if len(row) > 14 and row[14] == approval_password:  # Column 15 is approval code (0-indexed 14)
+            if len(row) > 13 and row[13] == approval_password:  # Column 14 is approval code (0-indexed 13)
                 # Update status
-                sheet.update_cell(idx + 1, 13, status)  # Status column (13) - 0-indexed 12
-                sheet.update_cell(idx + 1, 14, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date (14) - 0-indexed 13
+                sheet.update_cell(idx + 1, 12, status)  # Status column (12) - 0-indexed 11
+                sheet.update_cell(idx + 1, 13, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Approval date (13) - 0-indexed 12
                 
                 # Get employee and superior info for email
-                employee_name = row[1] if len(row) > 1 else ""
-                employee_email = row[3] if len(row) > 3 else ""
-                superior_name = row[10] if len(row) > 10 else ""
-                superior_email = row[11] if len(row) > 11 else ""
+                employee_name = row[2] if len(row) > 2 else ""  # Employee Name is column 3 (index 2)
+                employee_email = row[16] if len(row) > 16 else ""  # Employee email is column 17 (index 16)
+                superior_name = row[9] if len(row) > 9 else ""  # Superior Name is column 10 (index 9)
+                superior_email = row[10] if len(row) > 10 else ""  # Superior Email is column 11 (index 10)
                 
                 # Get cluster info for email
                 cluster_info = None
                 cluster_number = None
                 total_clusters = None
                 
-                if len(row) > 5:
+                if len(row) > 4:
                     cluster_info = {
-                        'leave_type': row[5] if len(row) > 5 else "",
-                        'from_date': row[8] if len(row) > 8 else "",  # From Date
-                        'till_date': row[9] if len(row) > 9 else ""   # Till Date
+                        'leave_type': row[4] if len(row) > 4 else "",  # Type of Leave is column 5 (index 4)
+                        'from_date': row[7] if len(row) > 7 else "",  # From Date is column 8 (index 7)
+                        'till_date': row[8] if len(row) > 8 else ""   # To Date is column 9 (index 8)
                     }
                 
                 # Get cluster number if it's a cluster leave
-                is_cluster = row[15] if len(row) > 15 else "No"
-                if is_cluster == "Yes" and len(row) > 16:
-                    cluster_number = row[16] if row[16] else None
+                is_cluster = row[14] if len(row) > 14 else "No"  # Cluster (Yes/No) is column 15 (index 14)
+                if is_cluster == "Yes" and len(row) > 15:
+                    cluster_number = row[15] if row[15] else None  # Cluster leave Number is column 16 (index 15)
                 
                 # If it's a cluster leave, get total clusters for this employee
                 if is_cluster == "Yes" and employee_name:
                     total_clusters = 0
                     for record in all_records[1:]:  # Skip header
-                        if len(record) > 1 and record[1] == employee_name and record[15] == "Yes":
+                        if len(record) > 2 and record[2] == employee_name and record[14] == "Yes":  # Employee Name is column 3 (index 2), Cluster is column 15 (index 14)
                             total_clusters += 1
                 
                 log_debug(f"Updated row {idx + 1} to status: {status}")
@@ -2888,282 +2951,318 @@ with tab1:
         submit_button = st.button("🚀 Submit Leave Request", type="primary", use_container_width=True, key="submit_leave_request")
         
         if submit_button:
-            # VALIDATION CHECKS
-            validation_passed = True
-            error_messages = []
-            
-            # Check basic required fields
-            if not all([employee_name, employee_code, employee_email, department != "Select Department", 
-                        purpose, superior_name != "Select Manager"]):
-                validation_passed = False
-                error_messages.append("Please complete all required fields")
-            
-            # Validate email format
-            if employee_email and ("@" not in employee_email or "." not in employee_email):
-                validation_passed = False
-                error_messages.append("Please enter a valid email address")
-            
-            # Validate clusters
-            for i, cluster in enumerate(st.session_state.clusters):
-                if cluster['leave_type'] == "Select Type":
-                    validation_passed = False
-                    error_messages.append(f"Please select leave type for Period {i+1}")
-                    break
-                
-                # Check date validity for Full Day
-                if cluster['leave_type'] == "Full Day":
-                    if cluster['from_date'] > cluster['till_date']:
-                        validation_passed = False
-                        error_messages.append(f"End date must be after or equal to start date for Period {i+1}")
-                        break
-            
-            if not validation_passed:
-                error_html = "<div class='error-message'><div style='display: flex; align-items: center; justify-content: center;'><div style='font-size: 1.5rem; margin-right: 10px;'>⚠️</div><div><strong>Validation Error</strong><br>"
-                for error in error_messages:
-                    error_html += f"{error}<br>"
-                error_html += "</div></div></div>"
-                st.markdown(error_html, unsafe_allow_html=True)
+            # Check if submission is already in progress
+            if st.session_state.submission_in_progress:
+                st.warning("⚠️ Submission already in progress. Please wait...")
             else:
-                with st.spinner('Submitting your application...'):
-                    # Prepare data
-                    submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    superior_email = SUPERIORS[superior_name]
+                st.session_state.submission_in_progress = True
+                
+                # VALIDATION CHECKS
+                validation_passed = True
+                error_messages = []
+                
+                # Check basic required fields
+                if not all([employee_name, employee_code, employee_email, department != "Select Department", 
+                            purpose, superior_name != "Select Manager"]):
+                    validation_passed = False
+                    error_messages.append("Please complete all required fields")
+                
+                # Validate email format
+                if employee_email and ("@" not in employee_email or "." not in employee_email):
+                    validation_passed = False
+                    error_messages.append("Please enter a valid email address")
+                
+                # Validate clusters
+                for i, cluster in enumerate(st.session_state.clusters):
+                    if cluster['leave_type'] == "Select Type":
+                        validation_passed = False
+                        error_messages.append(f"Please select leave type for Period {i+1}")
+                        break
                     
-                    # Connect to Google Sheets first
-                    sheet = setup_google_sheets()
-                    
-                    if sheet:
-                        try:
-                            # Generate unique codes for each cluster (WITH DUPLICATE CHECKING)
-                            cluster_codes = {}
-                            for i in range(len(st.session_state.clusters)):
-                                # Generate code with duplicate checking
-                                code = generate_approval_password(sheet)
-                                cluster_codes[i] = code
-                                log_debug(f"Generated unique code for period {i+1}: {code}")
-                            
-                            # Submit each cluster as separate row
-                            for i, cluster in enumerate(st.session_state.clusters):
-                                # Calculate days for this cluster
-                                no_of_days = calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type'])
+                    # Check date validity for Full Day
+                    if cluster['leave_type'] == "Full Day":
+                        if cluster['from_date'] > cluster['till_date']:
+                            validation_passed = False
+                            error_messages.append(f"End date must be after or equal to start date for Period {i+1}")
+                            break
+                
+                if not validation_passed:
+                    error_html = "<div class='error-message'><div style='display: flex; align-items: center; justify-content: center;'><div style='font-size: 1.5rem; margin-right: 10px;'>⚠️</div><div><strong>Validation Error</strong><br>"
+                    for error in error_messages:
+                        error_html += f"{error}<br>"
+                    error_html += "</div></div></div>"
+                    st.markdown(error_html, unsafe_allow_html=True)
+                    st.session_state.submission_in_progress = False
+                else:
+                    with st.spinner('Submitting your application...'):
+                        # Prepare data
+                        submission_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        superior_email = SUPERIORS[superior_name]
+                        
+                        # Connect to Google Sheets first
+                        sheet = setup_google_sheets()
+                        
+                        if sheet:
+                            try:
+                                # Check for duplicate submissions
+                                is_duplicate = False
+                                for cluster in st.session_state.clusters:
+                                    if check_duplicate_submission(sheet, employee_code, cluster['from_date'], cluster['till_date'], cluster['leave_type']):
+                                        is_duplicate = True
+                                        break
                                 
-                                # Prepare row data - EXACTLY 17 COLUMNS to match headers
-                                row_data = [
-                                    submission_date,  # 1. Submission Date
-                                    employee_name.strip(),  # 2. Employee Name
-                                    employee_code.strip(),  # 3. Employee Code
-                                    employee_email.strip(),  # 4. Employee email
-                                    department.strip(),  # 5. Department
-                                    cluster['leave_type'].strip(),  # 6. Type of Leave
-                                    str(no_of_days) if no_of_days is not None else "",  # 7. No of Days
-                                    purpose.strip(),  # 8. Purpose of Leave
-                                    cluster['from_date'].strftime("%Y-%m-%d"),  # 9. From Date
-                                    cluster['till_date'].strftime("%Y-%m-%d"),  # 10. To Date
-                                    superior_name.strip(),  # 11. Superior or Team leader Name
-                                    superior_email.strip(),  # 12. Superior or Team leader Email
-                                    "Pending",  # 13. Status
-                                    "",  # 14. Approval Date (empty initially)
-                                    cluster_codes[i],  # 15. Approval Password
-                                    "Yes" if is_cluster else "No",  # 16. Cluster (Yes/No)
-                                    str(i+1) if is_cluster else ""  # 17. Cluster leave Number
-                                ]
-                                
-                                # Debug: Log the row data
-                                log_debug(f"Row data for period {i+1}: {row_data}")
-                                log_debug(f"Row data length: {len(row_data)}")
-                                
-                                # Ensure we have exactly 17 columns (matching headers)
-                                if len(row_data) != 17:
-                                    log_debug(f"Warning: Row data has {len(row_data)} columns, expected 17")
-                                    # Pad with empty strings if needed
-                                    while len(row_data) < 17:
-                                        row_data.append("")
-                                    # Truncate if too long
-                                    row_data = row_data[:17]
-                                
-                                # Validate each field is a string
-                                for j, item in enumerate(row_data):
-                                    if not isinstance(item, str):
-                                        row_data[j] = str(item) if item is not None else ""
-                                
-                                # Write to Google Sheets
-                                try:
-                                    sheet.append_row(row_data)
-                                    log_debug(f"✓ Data written to Google Sheets for {employee_name} - Period {i+1} - Code: {cluster_codes[i]}")
-                                except Exception as e:
-                                    log_debug(f"Error writing to Google Sheets: {str(e)}")
-                                    st.error(f"Error writing to Google Sheets: {str(e)}")
-                                    raise
-                            
-                            # Try to send email only if configuration is working
-                            email_sent = False
-                            email_error = ""
-                            
-                            if email_config["configured"]:
-                                try:
-                                    # Prepare clusters data for email
-                                    clusters_for_email = []
-                                    for cluster in st.session_state.clusters:
-                                        cluster_copy = cluster.copy()
-                                        cluster_copy['employee_code'] = employee_code
-                                        cluster_copy['department'] = department
-                                        cluster_copy['purpose'] = purpose
-                                        clusters_for_email.append(cluster_copy)
-                                    
-                                    email_sent = send_approval_email(
-                                        employee_name,
-                                        superior_name,
-                                        superior_email,
-                                        employee_email,
-                                        clusters_for_email,
-                                        cluster_codes
-                                    )
-                                    if not email_sent:
-                                        email_error = "Email sending failed - check debug logs"
-                                except Exception as e:
-                                    email_error = f"Email exception: {str(e)}"
-                                    log_debug(f"Email exception: {traceback.format_exc()}")
-                            
-                            if email_sent:
-                                st.markdown('''
-                                    <div class="success-message">
-                                        <div style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
-                                        <div style="font-size: 1.5rem; font-weight: 600; margin-bottom: 10px; color: #166534;">
-                                            Application Submitted Successfully!
-                                        </div>
-                                        <div style="color: #155724; margin-bottom: 15px;">
-                                            Your leave request has been sent to your manager for approval.
-                                        </div>
-                                        <div style="font-size: 0.95rem; color: #0f5132; opacity: 0.9;">
-                                            Confirmation email sent to your email address.
-                                        </div>
-                                    </div>
-                                ''', unsafe_allow_html=True)
-                                
-                                st.balloons()
-                                # Clear generated codes for this session
-                                st.session_state.generated_codes.clear()
-                                # Set flag to reset form on next render
-                                st.session_state.reset_form_tab1 = True
-                                time.sleep(2)
-                                st.rerun()
-                            else:
-                                # Show manual approval codes section
-                                st.session_state.cluster_codes = cluster_codes
-                                st.session_state.show_copy_section = True
-                                
-                                st.markdown(f'''
-                                    <div class="info-box">
-                                        <div style="display: flex; align-items: flex-start;">
-                                            <div style="font-size: 1.5rem; margin-right: 15px; color: #ff9800;">📧</div>
-                                            <div>
-                                                <strong style="display: block; margin-bottom: 8px; color: #ff9800;">Email Notification Issue</strong>
-                                                Your application was saved to the database successfully!<br>
-                                                However, we couldn't send the email notification automatically.<br>
-                                                <small>{email_error}</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ''', unsafe_allow_html=True)
-                                
-                                # Manual approval codes section
-                                st.markdown("---")
-                                st.markdown("""
-                                    <div style="text-align: center; margin: 2rem 0;">
-                                        <div style="font-size: 1.3rem; font-weight: 600; color: #673ab7; margin-bottom: 1rem;">
-                                            📋 Manual Approval Process
-                                        </div>
-                                        <p style="color: #718096; margin-bottom: 1.5rem;">
-                                            Please share these approval codes with your manager <strong>{}</strong>:
-                                        </p>
-                                    </div>
-                                """.format(superior_name), unsafe_allow_html=True)
-                                
-                                # Display all cluster codes
-                                for i, cluster in enumerate(st.session_state.clusters):
-                                    code = cluster_codes[i]
-                                    days = calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type'])
-                                    days_display = "N/A" if cluster['leave_type'] == "Early Exit" else (f"{days} days" if cluster['leave_type'] == "Full Day" else "0.5 day")
-                                    
-                                    st.markdown(f"""
-                                        <div style="background: {'#f8f9ff' if i % 2 == 0 else '#f0f2ff'}; padding: 1.5rem; border-radius: 12px; margin: 1rem 0; border-left: 4px solid #4dabf7;">
-                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                if is_duplicate:
+                                    st.markdown('''
+                                        <div class="error-message">
+                                            <div style="display: flex; align-items: center; justify-content: center;">
+                                                <div style="font-size: 1.5rem; margin-right: 10px;">⚠️</div>
                                                 <div>
-                                                    <div style="font-size: 1.1rem; font-weight: 600; color: #339af0;">Period {i+1}</div>
-                                                    <div style="font-size: 0.9rem; color: #718096;">
-                                                        {cluster['from_date'].strftime('%Y-%m-%d')} to {cluster['till_date'].strftime('%Y-%m-%d')} • {cluster['leave_type']} • {days_display}
-                                                    </div>
-                                                </div>
-                                                <div style="text-align: center;">
-                                                    <div style="font-size: 0.9rem; color: #6b46c1; font-weight: 500; margin-bottom: 5px;">
-                                                        Approval Code
-                                                    </div>
-                                                    <div style="font-size: 2rem; font-weight: 700; color: #553c9a; 
-                                                                letter-spacing: 4px; font-family: 'Courier New', monospace;">
-                                                        {code}
-                                                    </div>
-                                                    <button class="copy-code-btn" onclick="copyToClipboard('{code}')" style="margin-top: 10px;">
-                                                        📋 Copy Code
-                                                    </button>
+                                                    <strong>Duplicate Submission Detected</strong><br>
+                                                    You have already submitted this leave request within the last 24 hours.<br>
+                                                    Please check your email for confirmation or contact HR if this is a different request.
                                                 </div>
                                             </div>
+                                        </div>
+                                    ''', unsafe_allow_html=True)
+                                    st.session_state.submission_in_progress = False
+                                    time.sleep(2)
+                                    st.rerun()
+                                
+                                # Generate unique codes for each cluster (WITH DUPLICATE CHECKING)
+                                cluster_codes = {}
+                                for i in range(len(st.session_state.clusters)):
+                                    # Generate code with duplicate checking
+                                    code = generate_approval_password(sheet)
+                                    cluster_codes[i] = code
+                                    log_debug(f"Generated unique code for period {i+1}: {code}")
+                                
+                                # Submit each cluster as separate row following the exact column order
+                                for i, cluster in enumerate(st.session_state.clusters):
+                                    # Calculate days for this cluster
+                                    no_of_days = calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type'])
+                                    
+                                    # Prepare row data - EXACTLY matching the column headers in order
+                                    row_data = [
+                                        submission_date,                          # 1. Submission Date
+                                        employee_code.strip(),                    # 2. Employee Code
+                                        employee_name.strip(),                    # 3. Employee Name
+                                        department.strip(),                       # 4. Department
+                                        cluster['leave_type'].strip(),            # 5. Type of Leave
+                                        str(no_of_days) if no_of_days is not None else "",  # 6. No of Days
+                                        purpose.strip(),                          # 7. Purpose of Leave
+                                        cluster['from_date'].strftime("%Y-%m-%d"), # 8. From Date
+                                        cluster['till_date'].strftime("%Y-%m-%d"), # 9. To Date
+                                        superior_name.strip(),                    # 10. Superior or Team leader Name
+                                        superior_email.strip(),                   # 11. Superior or Team leader Email
+                                        "Pending",                                 # 12. Status
+                                        "",                                        # 13. Approval Date (empty initially)
+                                        cluster_codes[i],                          # 14. Approval Password
+                                        "Yes" if is_cluster else "No",             # 15. Cluster (Yes/No)
+                                        str(i+1) if is_cluster else "",            # 16. Cluster leave Number
+                                        employee_email.strip(),                    # 17. Employee email
+                                        ""                                         # 18. Comments (empty for reference)
+                                    ]
+                                    
+                                    # Debug: Log the row data
+                                    log_debug(f"Row data for period {i+1}: {row_data}")
+                                    log_debug(f"Row data length: {len(row_data)} (should be 18)")
+                                    
+                                    # Ensure we have exactly 18 columns (matching headers)
+                                    if len(row_data) != 18:
+                                        log_debug(f"Warning: Row data has {len(row_data)} columns, expected 18")
+                                        # Pad with empty strings if needed
+                                        while len(row_data) < 18:
+                                            row_data.append("")
+                                        # Truncate if too long
+                                        row_data = row_data[:18]
+                                    
+                                    # Validate each field is a string
+                                    for j, item in enumerate(row_data):
+                                        if not isinstance(item, str):
+                                            row_data[j] = str(item) if item is not None else ""
+                                    
+                                    # Write to Google Sheets
+                                    try:
+                                        sheet.append_row(row_data)
+                                        log_debug(f"✓ Data written to Google Sheets for {employee_name} - Period {i+1} - Code: {cluster_codes[i]}")
+                                    except Exception as e:
+                                        log_debug(f"Error writing to Google Sheets: {str(e)}")
+                                        st.error(f"Error writing to Google Sheets: {str(e)}")
+                                        raise
+                                
+                                # Try to send email only if configuration is working
+                                email_sent = False
+                                email_error = ""
+                                
+                                if email_config["configured"]:
+                                    try:
+                                        # Prepare clusters data for email
+                                        clusters_for_email = []
+                                        for cluster in st.session_state.clusters:
+                                            cluster_copy = cluster.copy()
+                                            cluster_copy['employee_code'] = employee_code
+                                            cluster_copy['department'] = department
+                                            cluster_copy['purpose'] = purpose
+                                            clusters_for_email.append(cluster_copy)
+                                        
+                                        email_sent = send_approval_email(
+                                            employee_name,
+                                            superior_name,
+                                            superior_email,
+                                            employee_email,
+                                            clusters_for_email,
+                                            cluster_codes
+                                        )
+                                        if not email_sent:
+                                            email_error = "Email sending failed - check debug logs"
+                                    except Exception as e:
+                                        email_error = f"Email exception: {str(e)}"
+                                        log_debug(f"Email exception: {traceback.format_exc()}")
+                                
+                                if email_sent:
+                                    st.markdown('''
+                                        <div class="success-message">
+                                            <div style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
+                                            <div style="font-size: 1.5rem; font-weight: 600; margin-bottom: 10px; color: #166534;">
+                                                Application Submitted Successfully!
+                                            </div>
+                                            <div style="color: #155724; margin-bottom: 15px;">
+                                                Your leave request has been sent to your manager for approval.
+                                            </div>
+                                            <div style="font-size: 0.95rem; color: #0f5132; opacity: 0.9;">
+                                                Confirmation email sent to your email address.
+                                            </div>
+                                        </div>
+                                    ''', unsafe_allow_html=True)
+                                    
+                                    st.balloons()
+                                    # Clear generated codes for this session
+                                    st.session_state.generated_codes.clear()
+                                    # Set flag to reset form on next render
+                                    st.session_state.reset_form_tab1 = True
+                                    st.session_state.submission_in_progress = False
+                                    time.sleep(2)
+                                    st.rerun()
+                                else:
+                                    # Show manual approval codes section
+                                    st.session_state.cluster_codes = cluster_codes
+                                    st.session_state.show_copy_section = True
+                                    
+                                    st.markdown(f'''
+                                        <div class="info-box">
+                                            <div style="display: flex; align-items: flex-start;">
+                                                <div style="font-size: 1.5rem; margin-right: 15px; color: #ff9800;">📧</div>
+                                                <div>
+                                                    <strong style="display: block; margin-bottom: 8px; color: #ff9800;">Email Notification Issue</strong>
+                                                    Your application was saved to the database successfully!<br>
+                                                    However, we couldn't send the email notification automatically.<br>
+                                                    <small>{email_error}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ''', unsafe_allow_html=True)
+                                    
+                                    # Manual approval codes section
+                                    st.markdown("---")
+                                    st.markdown("""
+                                        <div style="text-align: center; margin: 2rem 0;">
+                                            <div style="font-size: 1.3rem; font-weight: 600; color: #673ab7; margin-bottom: 1rem;">
+                                                📋 Manual Approval Process
+                                            </div>
+                                            <p style="color: #718096; margin-bottom: 1.5rem;">
+                                                Please share these approval codes with your manager <strong>{}</strong>:
+                                            </p>
+                                        </div>
+                                    """.format(superior_name), unsafe_allow_html=True)
+                                    
+                                    # Display all cluster codes
+                                    for i, cluster in enumerate(st.session_state.clusters):
+                                        code = cluster_codes[i]
+                                        days = calculate_days(cluster['from_date'], cluster['till_date'], cluster['leave_type'])
+                                        days_display = "N/A" if cluster['leave_type'] == "Early Exit" else (f"{days} days" if cluster['leave_type'] == "Full Day" else "0.5 day")
+                                        
+                                        st.markdown(f"""
+                                            <div style="background: {'#f8f9ff' if i % 2 == 0 else '#f0f2ff'}; padding: 1.5rem; border-radius: 12px; margin: 1rem 0; border-left: 4px solid #4dabf7;">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                                    <div>
+                                                        <div style="font-size: 1.1rem; font-weight: 600; color: #339af0;">Period {i+1}</div>
+                                                        <div style="font-size: 0.9rem; color: #718096;">
+                                                            {cluster['from_date'].strftime('%Y-%m-%d')} to {cluster['till_date'].strftime('%Y-%m-%d')} • {cluster['leave_type']} • {days_display}
+                                                        </div>
+                                                    </div>
+                                                    <div style="text-align: center;">
+                                                        <div style="font-size: 0.9rem; color: #6b46c1; font-weight: 500; margin-bottom: 5px;">
+                                                            Approval Code
+                                                        </div>
+                                                        <div style="font-size: 2rem; font-weight: 700; color: #553c9a; 
+                                                                    letter-spacing: 4px; font-family: 'Courier New', monospace;">
+                                                            {code}
+                                                        </div>
+                                                        <button class="copy-code-btn" onclick="copyToClipboard('{code}')" style="margin-top: 10px;">
+                                                            📋 Copy Code
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        """, unsafe_allow_html=True)
+                                    
+                                    # Instructions for manager
+                                    st.markdown("""
+                                        <div style="background: #e8f5e9; padding: 1.5rem; border-radius: 12px; margin: 1.5rem 0;">
+                                            <strong style="color: #2e7d32; display: block; margin-bottom: 10px;">
+                                                ✅ Instructions for your Manager:
+                                            </strong>
+                                            <ol style="color: #388e3c; margin-left: 20px;">
+                                                <li>Visit: <strong>https://hr-application-rtundoncudkzt9efwnscey.streamlit.app/</strong></li>
+                                                <li>Click on "✅ Approval Portal" tab</li>
+                                                <li><strong>For each period:</strong> Enter the specific approval code mentioned above</li>
+                                                <li>Select Approve or Reject for that period</li>
+                                                <li>Click Submit Decision</li>
+                                                <li><strong>Repeat</strong> for each period with its specific code</li>
+                                            </ol>
+                                            <p style="color: #2e7d32; font-size: 0.9rem; margin-top: 10px;">
+                                                <strong>Note:</strong> Each code can only be used once for its specific period.
+                                            </p>
                                         </div>
                                     """, unsafe_allow_html=True)
-                                
-                                # Instructions for manager
-                                st.markdown("""
-                                    <div style="background: #e8f5e9; padding: 1.5rem; border-radius: 12px; margin: 1.5rem 0;">
-                                        <strong style="color: #2e7d32; display: block; margin-bottom: 10px;">
-                                            ✅ Instructions for your Manager:
-                                        </strong>
-                                        <ol style="color: #388e3c; margin-left: 20px;">
-                                            <li>Visit: <strong>https://hr-application-rtundoncudkzt9efwnscey.streamlit.app/</strong></li>
-                                            <li>Click on "✅ Approval Portal" tab</li>
-                                            <li><strong>For each period:</strong> Enter the specific approval code mentioned above</li>
-                                            <li>Select Approve or Reject for that period</li>
-                                            <li>Click Submit Decision</li>
-                                            <li><strong>Repeat</strong> for each period with its specific code</li>
-                                        </ol>
-                                        <p style="color: #2e7d32; font-size: 0.9rem; margin-top: 10px;">
-                                            <strong>Note:</strong> Each code can only be used once for its specific period.
-                                        </p>
+                                    
+                                    st.balloons()
+                                    # Clear generated codes for this session
+                                    st.session_state.generated_codes.clear()
+                                    # Set flag to reset form on next render
+                                    st.session_state.reset_form_tab1 = True
+                                    st.session_state.submission_in_progress = False
+                                    time.sleep(2)
+                                    st.rerun()
+                                    
+                            except Exception as e:
+                                st.markdown(f'''
+                                    <div class="error-message">
+                                        <div style="display: flex; align-items: center; justify-content: center;">
+                                            <div style="font-size: 1.5rem; margin-right: 10px;">❌</div>
+                                            <div>
+                                                <strong>Submission Error</strong><br>
+                                                Please try again or contact HR<br>
+                                                Error: {str(e)}
+                                            </div>
+                                        </div>
                                     </div>
-                                """, unsafe_allow_html=True)
-                                
-                                st.balloons()
-                                # Clear generated codes for this session
-                                st.session_state.generated_codes.clear()
-                                # Set flag to reset form on next render
-                                st.session_state.reset_form_tab1 = True
-                                time.sleep(2)
-                                st.rerun()
-                                
-                        except Exception as e:
-                            st.markdown(f'''
+                                ''', unsafe_allow_html=True)
+                                log_debug(f"Submission error: {traceback.format_exc()}")
+                                st.session_state.submission_in_progress = False
+                        else:
+                            st.markdown('''
                                 <div class="error-message">
                                     <div style="display: flex; align-items: center; justify-content: center;">
-                                        <div style="font-size: 1.5rem; margin-right: 10px;">❌</div>
+                                        <div style="font-size: 1.5rem; margin-right: 10px;">📊</div>
                                         <div>
-                                            <strong>Submission Error</strong><br>
-                                            Please try again or contact HR<br>
-                                            Error: {str(e)}
+                                            <strong>Database Connection Error</strong><br>
+                                            Could not connect to database. Please try again later.
                                         </div>
                                     </div>
                                 </div>
                             ''', unsafe_allow_html=True)
-                            log_debug(f"Submission error: {traceback.format_exc()}")
-                    else:
-                        st.markdown('''
-                            <div class="error-message">
-                                <div style="display: flex; align-items: center; justify-content: center;">
-                                    <div style="font-size: 1.5rem; margin-right: 10px;">📊</div>
-                                    <div>
-                                        <strong>Database Connection Error</strong><br>
-                                        Could not connect to database. Please try again later.
-                                    </div>
-                                </div>
-                            </div>
-                        ''', unsafe_allow_html=True)
+                            st.session_state.submission_in_progress = False
 
 with tab2:
     # Approval Portal Header
