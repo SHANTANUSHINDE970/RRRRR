@@ -1323,7 +1323,7 @@ def get_google_credentials():
         try:
             creds_dict = {
                 "type": st.secrets[secrets_key]["type"],
-                "project_id": St. Secrets[secrets_key]["project_id"],
+                "project_id": st.secrets[secrets_key]["project_id"],
                 "private_key_id": st.secrets[secrets_key]["private_key_id"],
                 "private_key": st.secrets[secrets_key]["private_key"],
                 "client_email": st.secrets[secrets_key]["client_email"],
