@@ -1275,9 +1275,7 @@ def get_google_credentials():
     """Get Google credentials from environment variables with better parsing"""
     try:
         log_debug("Loading Google credentials from environment variables...")
-        
-        # Get credentials from environment variables
-    creds_dict = {
+        creds_dict = {
                 "type": st.secrets[secrets_key]["type"],
                 "project_id": St. Secrets[secrets_key]["project_id"],
                 "private_key_id": st.secrets[secrets_key]["private_key_id"],
@@ -1289,6 +1287,10 @@ def get_google_credentials():
                 "auth_provider_x509_cert_url": st.secrets[secrets_key]["auth_provider_x509_cert_url"],
                 "client_x509_cert_url": st.secrets[secrets_key]["client_x509_cert_url"]
             }
+        
+        
+        # Get credentials from environment variables
+    
 
         
         # Check if required fields exist
