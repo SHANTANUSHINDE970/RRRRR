@@ -4244,7 +4244,7 @@ with tab4:
                                 </div>
                             ''', unsafe_allow_html=True)
 
-# JavaScript for copying to clipboard - FIXED: Removed emoji from JavaScript string
+# Simple JavaScript for copying to clipboard - NO EMOJIS IN JS STRING
 copy_js = """
 <script>
 function copyToClipboard(text) {
