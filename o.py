@@ -697,59 +697,70 @@ def generate_approval_password(sheet=None):
 
 
 def get_google_credentials():
+    """
+    Dynamically finds Google service account credentials in Streamlit secrets.
+    Tries these section names in order:
+      google_credentials, google, gcp_service_account, gcp, GOOGLE, GCP
+    Within each section, reads all required fields using secrets_key pattern.
+    """
     try:
         log_debug("Loading Google credentials from Streamlit secrets...")
-        creds_dict = None
-        if 'google_credentials' in st.secrets:
-            log_debug("Found google_credentials in secrets")
-            try:
-                creds_dict = {
-                    "type": st.secrets["google_credentials"]["type"],
-                    "project_id": st.secrets["google_credentials"]["project_id"],
-                    "private_key_id": st.secrets["google_credentials"]["private_key_id"],
-                    "private_key": st.secrets["google_credentials"]["private_key"],
-                    "client_email": st.secrets["google_credentials"]["client_email"],
-                    "client_id": st.secrets["google_credentials"]["client_id"],
-                    "auth_uri": st.secrets["google_credentials"]["auth_uri"],
-                    "token_uri": st.secrets["google_credentials"]["token_uri"],
-                    "auth_provider_x509_cert_url": st.secrets["google_credentials"]["auth_provider_x509_cert_url"],
-                    "client_x509_cert_url": st.secrets["google_credentials"]["client_x509_cert_url"]
-                }
-            except KeyError as e:
-                log_debug(f"Missing key in google_credentials: {str(e)}")
-                st.error(f"Missing credential field in google_credentials: {str(e)}")
-                return None
-        elif 'google' in st.secrets:
-            log_debug("Found google in secrets")
-            try:
-                creds_dict = {
-                    "type": st.secrets["google"]["type"],
-                    "project_id": st.secrets["google"]["project_id"],
-                    "private_key_id": st.secrets["google"]["private_key_id"],
-                    "private_key": st.secrets["google"]["private_key"],
-                    "client_email": st.secrets["google"]["client_email"],
-                    "client_id": st.secrets["google"]["client_id"],
-                    "auth_uri": st.secrets["google"]["auth_uri"],
-                    "token_uri": st.secrets["google"]["token_uri"],
-                    "auth_provider_x509_cert_url": st.secrets["google"]["auth_provider_x509_cert_url"],
-                    "client_x509_cert_url": st.secrets["google"]["client_x509_cert_url"]
-                }
-            except KeyError as e:
-                log_debug(f"Missing key in google: {str(e)}")
-                st.error(f"Missing credential field in google: {str(e)}")
-                return None
-        else:
-            log_debug("Google credentials not found in secrets")
-            st.error("Google credentials not found in Streamlit secrets")
+
+        # All possible section names to try
+        possible_keys = [
+            "google_credentials",
+            "google",
+            "gcp_service_account",
+            "gcp",
+            "GOOGLE",
+            "GCP",
+        ]
+
+        secrets_key = None
+        for k in possible_keys:
+            if k in st.secrets:
+                secrets_key = k
+                log_debug(f"Found Google credentials section: [{secrets_key}]")
+                break
+
+        if secrets_key is None:
+            available = list(st.secrets.keys()) if st.secrets else []
+            log_debug(f"Google credentials section NOT found. Available top-level keys: {available}")
+            st.error(
+                f"Google credentials not found in Streamlit secrets. "
+                f"Available keys: {available}. "
+                f"Please add a section named one of: {possible_keys}"
+            )
             return None
 
+        # Build the credentials dict using the discovered secrets_key
+        try:
+            creds_dict = {
+                "type": st.secrets[secrets_key]["type"],
+                "project_id": st.secrets[secrets_key]["project_id"],
+                "private_key_id": st.secrets[secrets_key]["private_key_id"],
+                "private_key": st.secrets[secrets_key]["private_key"],
+                "client_email": st.secrets[secrets_key]["client_email"],
+                "client_id": st.secrets[secrets_key]["client_id"],
+                "auth_uri": st.secrets[secrets_key]["auth_uri"],
+                "token_uri": st.secrets[secrets_key]["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets[secrets_key]["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": st.secrets[secrets_key]["client_x509_cert_url"],
+            }
+        except KeyError as e:
+            log_debug(f"Missing key in [{secrets_key}]: {str(e)}")
+            st.error(f"Missing field in [{secrets_key}] section: {str(e)}")
+            return None
+
+        # Validate required fields
         required_fields = ["type", "project_id", "private_key_id", "private_key", "client_email"]
-        missing_fields = [field for field in required_fields if not creds_dict.get(field)]
+        missing_fields = [f for f in required_fields if not creds_dict.get(f)]
         if missing_fields:
             log_debug(f"Missing Google credential fields: {missing_fields}")
             st.error(f"Missing Google credential fields: {', '.join(missing_fields)}")
             return None
 
+        # Fix private key newline formatting (Streamlit secrets sometimes escapes them)
         private_key = creds_dict.get("private_key", "")
         if private_key:
             if "-----BEGIN PRIVATE KEY-----" not in private_key:
@@ -757,13 +768,15 @@ def get_google_credentials():
                     private_key = private_key.replace("\\n", "\n")
                 elif "MII" in private_key[:100]:
                     private_key = f"-----BEGIN PRIVATE KEY-----\n{private_key}\n-----END PRIVATE KEY-----"
+            # Second pass: ensure literal \n is replaced
             if "\n" not in private_key and "\\n" in private_key:
                 private_key = private_key.replace("\\n", "\n")
             creds_dict["private_key"] = private_key
             log_debug("Processed private key formatting")
 
-        log_debug(f"Google credentials loaded for: {creds_dict['client_email']}")
+        log_debug(f"Google credentials loaded successfully for: {creds_dict['client_email']}")
         return creds_dict
+
     except Exception as e:
         log_debug(f"Error getting Google credentials: {traceback.format_exc()}")
         st.error(f"Error loading Google credentials: {str(e)}")
@@ -874,64 +887,143 @@ def setup_wfh_sheet():
 
 
 def get_email_credentials():
+    """
+    Robustly finds email credentials in Streamlit secrets.
+
+    Supports these formats:
+
+    Format A - Section with sub-keys (most common):
+        [EMAIL]
+        sender_email = "you@gmail.com"
+        sender_password = "xxxx xxxx xxxx xxxx"
+
+    Format B - Direct top-level keys:
+        EMAIL_SENDER = "you@gmail.com"
+        EMAIL_PASSWORD = "xxxx xxxx xxxx xxxx"
+
+    Tries section names: EMAIL, email, gmail, GMAIL, SMTP, smtp
+    Tries key names for email: sender_email, email, EMAIL, user, USER
+    Tries key names for password: sender_password, password, PASSWORD, app_password
+    """
     try:
         log_debug("Getting email credentials from secrets...")
-        possible_sections = ['EMAIL', 'email', 'gmail', 'GMAIL']
+
         sender_email = None
         sender_password = None
         source = ""
-        for section in possible_sections:
+
+        # --- Step 1: Try section-based lookup ---
+        email_sections = ['EMAIL', 'email', 'gmail', 'GMAIL', 'SMTP', 'smtp']
+        email_keys = ['sender_email', 'email', 'EMAIL', 'user', 'USER', 'username', 'USERNAME']
+        password_keys = ['sender_password', 'password', 'PASSWORD', 'app_password', 'APP_PASSWORD', 'pass', 'PASS']
+
+        for section in email_sections:
             if section in st.secrets:
-                log_debug(f"Found email section: {section}")
-                try:
-                    if isinstance(st.secrets[section], dict):
-                        sender_email = st.secrets[section].get("sender_email") or st.secrets[section].get("email") or st.secrets[section].get("EMAIL")
-                        sender_password = st.secrets[section].get("sender_password") or st.secrets[section].get("password") or st.secrets[section].get("PASSWORD")
-                    else:
-                        sender_email = st.secrets[section]
-                    if sender_email and sender_password:
-                        source = section
-                        break
-                except Exception as e:
-                    log_debug(f"Error reading {section} section: {str(e)}")
+                log_debug(f"Found email section: [{section}]")
+                sec = st.secrets[section]
+                # Try all email key names
+                for ek in email_keys:
+                    try:
+                        val = sec[ek]
+                        if val and "@" in str(val):
+                            sender_email = str(val).strip()
+                            log_debug(f"Found email at [{section}][{ek}] = {sender_email}")
+                            break
+                    except (KeyError, TypeError):
+                        continue
+                # Try all password key names
+                for pk in password_keys:
+                    try:
+                        val = sec[pk]
+                        if val:
+                            sender_password = str(val).strip()
+                            log_debug(f"Found password at [{section}][{pk}], length={len(sender_password)}")
+                            break
+                    except (KeyError, TypeError):
+                        continue
+                if sender_email and sender_password:
+                    source = f"[{section}]"
+                    break
+
+        # --- Step 2: Try direct top-level keys ---
         if not sender_email or not sender_password:
-            log_debug("Trying direct secret names...")
-            sender_email = st.secrets.get("EMAIL_SENDER") or st.secrets.get("sender_email") or st.secrets.get("email")
-            sender_password = st.secrets.get("EMAIL_PASSWORD") or st.secrets.get("sender_password") or st.secrets.get("password")
+            log_debug("Trying direct top-level secret keys...")
+            direct_email_keys = ['EMAIL_SENDER', 'sender_email', 'email', 'EMAIL', 'GMAIL_USER', 'SMTP_USER']
+            direct_pass_keys = ['EMAIL_PASSWORD', 'sender_password', 'password', 'PASSWORD', 'GMAIL_PASSWORD', 'SMTP_PASSWORD', 'APP_PASSWORD']
+            for ek in direct_email_keys:
+                try:
+                    val = st.secrets[ek]
+                    if val and "@" in str(val):
+                        sender_email = str(val).strip()
+                        log_debug(f"Found email at top-level key [{ek}]")
+                        break
+                except (KeyError, TypeError):
+                    continue
+            for pk in direct_pass_keys:
+                try:
+                    val = st.secrets[pk]
+                    if val:
+                        sender_password = str(val).strip()
+                        log_debug(f"Found password at top-level key [{pk}], length={len(sender_password)}")
+                        break
+                except (KeyError, TypeError):
+                    continue
             if sender_email and sender_password:
-                source = "Direct Secrets"
+                source = "Direct top-level keys"
+
+        # --- Result ---
         if sender_email and sender_password:
-            log_debug(f"Email credentials loaded for: {sender_email}")
-            log_debug(f"Password length: {len(sender_password)} characters")
+            # Strip spaces from app password (Streamlit sometimes includes them)
+            clean_password = sender_password.replace(" ", "")
+            if len(clean_password) == 16 and len(sender_password) != 16:
+                log_debug("App password had spaces - stripped them for SMTP use")
+                sender_password = clean_password
+            log_debug(f"Email credentials loaded. Email={sender_email}, PasswordLen={len(sender_password)}, Source={source}")
             if len(sender_password) == 16:
-                log_debug("Password appears to be a Gmail App Password (16 chars)")
-            elif " " in sender_password:
-                log_debug("WARNING: Password contains spaces")
+                log_debug("Password is 16 chars - looks like a valid Gmail App Password")
+            else:
+                log_debug(f"Password length {len(sender_password)} - not a standard 16-char App Password")
             return sender_email, sender_password, source
         else:
-            log_debug("Email credentials not found in secrets")
-            return "", "", "Not Found"
+            available = list(st.secrets.keys()) if st.secrets else []
+            log_debug(f"Email credentials NOT found. Available top-level secret keys: {available}")
+            return "", "", f"Not Found (available keys: {available})"
+
     except Exception as e:
-        log_debug(f"Error getting email credentials: {str(e)}")
+        log_debug(f"Error getting email credentials: {traceback.format_exc()}")
         return "", "", f"Error: {str(e)}"
 
 
 def check_email_configuration():
     sender_email, sender_password, source = get_email_credentials()
     if not sender_email or not sender_password:
-        return {"configured": False, "message": "Email credentials not found", "details": "Please check your Streamlit secrets", "source": source}
+        return {
+            "configured": False,
+            "message": "Email credentials not found",
+            "details": f"Source info: {source}. Please add [EMAIL] section with sender_email and sender_password to Streamlit Secrets.",
+            "source": source
+        }
     if "@" not in sender_email or "." not in sender_email:
-        return {"configured": False, "message": "Invalid email format", "details": f"Email '{sender_email}' doesn't look valid", "source": source}
+        return {
+            "configured": False,
+            "message": "Invalid email format",
+            "details": f"Email '{sender_email}' doesn't look valid",
+            "source": source
+        }
     if len(sender_password) == 16 and ' ' not in sender_password:
-        password_type = "App Password"
+        password_type = "App Password (16 chars)"
     elif len(sender_password) > 0:
-        password_type = "Regular Password"
+        password_type = f"Password ({len(sender_password)} chars)"
     else:
         password_type = "Unknown"
     return {
-        "configured": True, "sender_email": sender_email, "source": source,
-        "password_type": password_type, "password_length": len(sender_password),
-        "message": f"Email credentials found ({password_type})"
+        "configured": True,
+        "sender_email": sender_email,
+        "source": source,
+        "password_type": password_type,
+        "password_length": len(sender_password),
+        "message": f"Email credentials found ({password_type})",
+        "details": f"Loaded from: {source}"
     }
 
 
@@ -1585,18 +1677,32 @@ def check_duplicate_wfh_submission(form_data):
 # ============================================
 st.sidebar.title("Configuration Panel")
 email_config = check_email_configuration()
+
+# --- Secrets Diagnostic ---
+st.sidebar.markdown("### Secrets Diagnostic")
+try:
+    all_secret_keys = list(st.secrets.keys())
+    st.sidebar.info(f"Top-level secret keys found:\n`{all_secret_keys}`")
+except Exception:
+    st.sidebar.error("Could not read st.secrets at all - check your Streamlit Cloud secrets setup")
+
 st.sidebar.markdown("### Email Configuration")
 if email_config["configured"]:
-    st.sidebar.success(email_config["message"])
-    st.sidebar.info(f"**Sender:** {email_config['sender_email']}")
-    if 'password_type' in email_config:
-        st.sidebar.info(f"**Password Type:** {email_config['password_type']}")
-    if 'password_length' in email_config:
-        st.sidebar.info(f"**Password Length:** {email_config['password_length']} chars")
+    st.sidebar.success(f"Email ready: {email_config['sender_email']}")
     st.sidebar.info(f"**Source:** {email_config['source']}")
+    if 'password_type' in email_config:
+        st.sidebar.info(f"**Password Type:** {email_config['password_type']}  ({email_config.get('password_length', '?')} chars)")
 else:
-    st.sidebar.error(email_config["message"])
-    st.sidebar.info(email_config["details"])
+    st.sidebar.error("Email credentials NOT found")
+    st.sidebar.warning(
+        "Add to Streamlit Secrets:\n\n"
+        "```toml\n"
+        "[EMAIL]\n"
+        "sender_email = \"you@gmail.com\"\n"
+        "sender_password = \"abcd efgh ijkl mnop\"\n"
+        "```"
+    )
+    st.sidebar.caption(f"Details: {email_config.get('details', email_config.get('message', ''))}")
 
 st.sidebar.markdown("---")
 if st.sidebar.button("Test Google Sheets Connection"):
