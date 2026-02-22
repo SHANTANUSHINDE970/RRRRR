@@ -1706,7 +1706,7 @@ def test_email_connection(test_recipient=None):
         msg = MIMEMultipart()
         msg['From'] = formataddr(("VOLAR FASHION HR", sender_email))
         msg['To'] = recipient
-        msg['Subject'] = "📧 VOLAR FASHION - Email Configuration Test"
+        msg['Subject'] = "VOLAR FASHION - Email Configuration Test"
         
         test_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         body = f"""
@@ -2827,7 +2827,7 @@ with st.sidebar.expander("📖 Email Setup Guide"):
     3. **Update Streamlit Secrets:**
        - In Streamlit Cloud, go to App Settings → Secrets
        - Add this configuration:
-    ```
+    ```toml
     [EMAIL]
     sender_email = "hrvolarfashion@gmail.com"
     sender_password = "your-16-character-app-password"
@@ -4244,7 +4244,7 @@ with tab4:
                                 </div>
                             ''', unsafe_allow_html=True)
 
-# JavaScript for copying to clipboard
+# JavaScript for copying to clipboard - FIXED: Removed emoji from JavaScript string
 copy_js = """
 <script>
 function copyToClipboard(text) {
