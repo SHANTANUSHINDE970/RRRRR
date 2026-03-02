@@ -575,7 +575,7 @@ WFH_APPROVALS = ["Select Approval", "Jaya Mam", "Sandip Sir", "Verbal from HR"]
 HOLIDAYS_2026 = [
     {"date": "01-Jan", "day": "Thursday", "holiday": "New Year"},
     {"date": "26-Jan", "day": "Monday", "holiday": "Republic Day"},
-    {"date": "03-Mar", "day": "Wednesday", "holiday": "Holi"},
+    {"date": "03-Mar", "day": "Tuesday", "holiday": "Holi"},
     {"date": "20-Mar", "day": "Friday", "holiday": "Ramzan Eid"},
     {"date": "01-May", "day": "Friday", "holiday": "Maharashtra Day"},
     {"date": "15-Aug", "day": "Saturday", "holiday": "Independence Day"},
