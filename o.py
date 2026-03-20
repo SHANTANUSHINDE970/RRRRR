@@ -1939,7 +1939,7 @@ with tab1:
                 if leave_type in ["Half Day", "Early Exit"]:
                     selected_date = st.date_input(
                         f"Date - Period {i+1}", value=cluster['from_date'],
-                        min_value=datetime.now().date(), key=f"date_cluster_{i}"
+                        min_value=datetime.now().date() - timedelta(days=60), key=f"date_cluster_{i}"
                     )
                     st.session_state.clusters[i]['from_date'] = selected_date
                     st.session_state.clusters[i]['till_date'] = selected_date
@@ -1948,13 +1948,13 @@ with tab1:
                     with col_a:
                         from_date = st.date_input(
                             f"From - Period {i+1}", value=cluster['from_date'],
-                            min_value=datetime.now().date(), key=f"from_date_cluster_{i}"
+                            min_value=datetime.now().date() - timedelta(days=60), key=f"from_date_cluster_{i}"
                         )
                         st.session_state.clusters[i]['from_date'] = from_date
                     with col_b:
                         till_date = st.date_input(
                             f"To - Period {i+1}", value=cluster['till_date'],
-                            min_value=datetime.now().date(), key=f"till_date_cluster_{i}"
+                            min_value=datetime.now().date() - timedelta(days=60), key=f"till_date_cluster_{i}"
                         )
                         st.session_state.clusters[i]['till_date'] = till_date
             with col3:
@@ -2024,7 +2024,7 @@ with tab1:
             if leave_type in ["Half Day", "Early Exit"]:
                 selected_date = st.date_input(
                     "Date", value=st.session_state.clusters[0]['from_date'],
-                    min_value=datetime.now().date(),
+                    min_value=datetime.now().date() - timedelta(days=60),
                     help="Select the date for your leave", key="date_single"
                 )
                 from_date = selected_date
@@ -2034,13 +2034,13 @@ with tab1:
                 with col_a:
                     from_date = st.date_input(
                         "Start Date", value=st.session_state.clusters[0]['from_date'],
-                        min_value=datetime.now().date(),
+                        min_value=datetime.now().date() - timedelta(days=60),
                         help="Select the first day of your leave", key="from_date_single"
                     )
                 with col_b:
                     till_date = st.date_input(
                         "End Date", value=st.session_state.clusters[0]['till_date'],
-                        min_value=datetime.now().date(),
+                        min_value=datetime.now().date() - timedelta(days=60),
                         help="Select the last day of your leave", key="till_date_single"
                     )
 
@@ -2658,12 +2658,12 @@ with tab4:
     with col3:
         start_date = st.date_input(
             "Start Date", value=st.session_state.form_data_tab4['start_date'],
-            min_value=datetime.now().date(), key="wfh_start_date"
+            min_value=datetime.now().date() - timedelta(days=60), key="wfh_start_date"
         )
     with col4:
         end_date = st.date_input(
             "End Date", value=st.session_state.form_data_tab4['end_date'],
-            min_value=datetime.now().date(), key="wfh_end_date"
+            min_value=datetime.now().date() - timedelta(days=60), key="wfh_end_date"
         )
 
     if start_date and end_date:
