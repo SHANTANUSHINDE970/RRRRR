@@ -574,11 +574,11 @@ DEPARTMENTS = [
 
 # WFH approvals: requests are sent to Sandip + HR; HR approves via portal
 WFH_APPROVAL_RECIPIENTS = {
-    "Sandip Gawankar": "Sandip@volarfashion.in",
+    
     "HR": "hrvolarfashion@gmail.com"
 }
 HR_EMAIL = "hrvolarfashion@gmail.com"
-SANDIP_EMAIL = "Sandip@volarfashion.in"
+
 
 HOLIDAYS_2026 = [
     {"date": "01-Jan", "day": "Thursday",  "holiday": "New Year"},
@@ -1664,14 +1664,7 @@ def send_wfh_approval_email(employee_name, employee_code, employee_email,
             server.sendmail(sender_email, HR_EMAIL, msg_hr.as_string())
             log_debug(f"WFH approval email sent to HR: {HR_EMAIL}")
 
-            # Send to Sandip
-            msg_sandip = MIMEMultipart('alternative')
-            msg_sandip['From'] = formataddr(("VOLAR FASHION HR", sender_email))
-            msg_sandip['To'] = SANDIP_EMAIL
-            msg_sandip['Subject'] = f"WFH/OOO Request Notification: {employee_name}"
-            msg_sandip.attach(MIMEText(html_body, 'html'))
-            server.sendmail(sender_email, SANDIP_EMAIL, msg_sandip.as_string())
-            log_debug(f"WFH notification email sent to Sandip: {SANDIP_EMAIL}")
+            
 
             server.quit()
             return True
