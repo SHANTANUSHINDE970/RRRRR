@@ -552,7 +552,7 @@ st.markdown("""
 # ============================================================
 SUPERIORS = {
     "Jaya Tahilramani": "hrvolarfashion@gmail.com",
-    "Sandip Gawankar": "Sandip@volarfashion.in",
+    "Sandip Gawankar": "sandip@ragunited.com",
     "Tariq Patel": "dn1@vfemails.com",
     "Sarath Kumar": "Sarath@vfemails.com",
     "Rajeev Thakur": "Rajeev@vfemails.com",
