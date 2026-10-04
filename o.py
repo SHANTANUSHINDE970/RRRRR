@@ -575,7 +575,8 @@ DEPARTMENTS = [
 # WFH approvals: requests are sent to Sandip + HR; HR approves via portal
 WFH_APPROVAL_RECIPIENTS = {
     
-    "HR": "hrvolarfashion@gmail.com"
+    "HR": "hrvolarfashion@gmail.com",
+    "Sandip": "sandip@ragunited.com",
 }
 HR_EMAIL = "hrvolarfashion@gmail.com"
 
