@@ -590,7 +590,7 @@ HOLIDAYS_2026 = [
     {"date": "15-Aug", "day": "Saturday",  "holiday": "Independence Day"},
     {"date": "14-Sep", "day": "Monday",    "holiday": "Ganesh Chaturthi"},
     {"date": "02-Oct", "day": "Friday",    "holiday": "Gandhi Jayanti"},
-    {"date": "21-Oct", "day": "Wednesday", "holiday": "Vijaydashmi"},
+    {"date": "20-Oct", "day": "Tuesday", "holiday": "Vijaydashmi"},
     {"date": "08-Nov", "day": "Sunday",    "holiday": "Diwali"},
     {"date": "11-Nov", "day": "Wednesday", "holiday": "Bhai Dooj"},
     {"date": "25-Dec", "day": "Friday",    "holiday": "Christmas"}
