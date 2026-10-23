@@ -567,7 +567,90 @@ SUPERIORS = {
     
     
 }
+# Employee master list: Code -> Name
+EMPLOYEES = {
+    "VF002": "Mohammed Tariq Abdul Sami Patel",
+    "VF003": "Venkat Yashwant Waghmare",
+    "VF005": "Ramashankar Yadav",
+    "VF006": "Manish Mishrilal Gupta",
+    "VF007": "Sandip Gawankar",
+    "VF009": "Akshaya Rajesh Shinde",
+    "VF012": "Pranit Shantaram Arekar",
+    "VF013": "Kamlesh S Patel",
+    "VF014": "Qamar Mukhtar Shaikh",
+    "VF015": "Sanjeev Kumar Yadav",
+    "VF017": "Nalendra Shukla",
+    "VF022": "Sachin Budhaji Dalvi",
+    "VF024": "Abhishek Sanjay More",
+    "VF025": "Sarika Vikas Gole",
+    "VF026": "Ankit Gajanan Jagtap",
+    "VF027": "Almas Anwar Ansari",
+    "VF029": "Sapna Kailash Ambre",
+    "VF030": "Dipali Gunaji Jadhav",
+    "VF031": "Rahul Anil more",
+    "VF032": "Mohammad Mudassir Gaus",
+    "VF033": "Ankita Anil Pendurkar",
+    "VF034": "Fulesh Ramakant Raje",
+    "VF037": "Vaishnavi Narendra Bhurke",
+    "VF038": "Parvej Alam",
+    "VF039": "Archana Gaonkar",
+    "VF040": "Sanjivani Sandesh Kadam",
+    "VF041": "Nilesh Mahadev Landge",
+    "VF043": "Nishant Dev",
+    "VF044": "Vitika Mehta",
+    "VF047": "Riya Naik",
+    "VF048": "Bhumika Vasant Panchal",
+    "VF049": "Philip Michael Joseph",
+    "VF050": "Farheen Aslam Shaikh",
+    "VF051": "Misha Jhanglani",
+    "VF054": "Khadija Mohd Shafique Shaikh",
+    "VF055": "Nimish Arvind Yadav",
+    "VF056": "Mohammed Mujjamil Mohammed Gaus Taukal",
+    "VF060": "Rajeevanand Bhardwaj",
+    "VF064": "Hitesh Raman Dantak",
+    "VF065": "Lakhan Laxman Dhokate",
+    "VF066": "Rahul Chauhan",
+    "VF069": "Aarif Anwar Shaikh",
+    "VF070": "Shraddha Digmbar Kamble",
+    "VF074": "Shivakant Roy",
+    "VF076": "Krishna Kumar Fulchand Yadav",
+    "VF077": "Minawaz Gaus Mohiddin Shaikh",
+    "VF078": "Ibrahim Umar Sayyed",
+    "VF082": "Chaya Naresh bhurkund",
+    "VF084": "Shweta Ashok Pinage",
+    "VF085": "Sarath Kumar P",
+    "VF086": "Rajeev Kumar Thakur",
+    "VF087": "Pallavi Ratnadeep Kadam",
+    "VF090": "Komal Prakash Bhitale",
+    "VF092": "Divya Rajesh Shetty",
+    "VF096": "Disha Devendra Mistry",
+    "VF098": "Sachita Sandesh Gore",
+    "VF099": "Sameer Gurunath Fanasgaonkar",
+    "VF107": "Guruprasad Prakash Keluskar",
+    "VF108": "Ayushi Kalpen Doshi",
+    "VF110": "Akshit Singh",
+    "VF112": "Lokesh Hanumant Chavan",
+    "VF116": "Shantanu Suresh Shinde",
+    "VF117": "Siddhesh Ravinand Pose",
+    "VF118": "Pooja Prakash Mahale",
+    "VF119": "Laxmi Rajendra Waghmare",
+    "VF121": "Jignesh Ashok Patil",
+    "VF122": "Rohit Anil Kanojiya",
+    "VF125": "Ismail Ahmed Khan",
+    "VF126": "Salmani Tafseer Ahmed",
+    "VF128": "Nandini Satish Rathod",
+    "VF130": "Shubhadra Nayba Sadawarte",
+    "VF132": "Malaika Abhijeet Sathe",
+    "VF133": "Sarvesh Santosh Salvi",
+    "VF134": "Vidhi Jayendra Shah",
+    "VF135": "Sanika Dhananjay Sawant",
+    "VF136": "Pooja Shripal Patel",
+    "VF137": "Vanshika Krishnakumar Rai",
+    "VF138": "Gaurav Devidas Vetal",
+}
 
+EMPLOYEE_ID_PLACEHOLDER = "Select Employee ID"
+EMPLOYEE_IDS = [EMPLOYEE_ID_PLACEHOLDER] + list(EMPLOYEES.keys())
 DEPARTMENTS = [
     "Accounts and Finance", "Administration", "Business Development", "Content",
     "E-Commerce", "Factory & Production", "Graphics", "Human Resources", "IT",
@@ -2206,6 +2289,7 @@ with tab1:
     """, unsafe_allow_html=True)
 
     if st.session_state.reset_form_tab1:
+        st.session_state["employee_code_select"] = EMPLOYEE_ID_PLACEHOLDER
         st.session_state.form_data_tab1 = {
             'employee_name': '', 'employee_code': '', 'employee_email': '',
             'department': 'Select Department', 'purpose': '',
@@ -2222,14 +2306,17 @@ with tab1:
 
     col1, col2, col3 = st.columns([1, 1, 1], gap="large")
     with col1:
-        employee_name = st.text_input(
-            "Full Name", value=st.session_state.form_data_tab1['employee_name'],
-            placeholder="Enter your full name", key="employee_name_input"
+        selected_emp_id = st.selectbox(
+            "Employee ID", EMPLOYEE_IDS, index=0,
+            help="Select your Employee ID. Your name fills in automatically.",
+            key="employee_code_select"
         )
+        employee_code = "" if selected_emp_id == EMPLOYEE_ID_PLACEHOLDER else selected_emp_id
     with col2:
-        employee_code = st.text_input(
-            "Employee ID", value=st.session_state.form_data_tab1['employee_code'],
-            placeholder="e.g., VF-EMP-001", key="employee_code_input"
+        employee_name = EMPLOYEES.get(employee_code, "")
+        st.text_input(
+            "Full Name (auto-filled)", value=employee_name,
+            placeholder="Select Employee ID first", disabled=True
         )
     with col3:
         employee_email = st.text_input(
@@ -2849,6 +2936,7 @@ with tab4:
     """, unsafe_allow_html=True)
 
     if st.session_state.reset_form_tab4:
+        st.session_state["wfh_employee_code_select"] = EMPLOYEE_ID_PLACEHOLDER
         st.session_state.form_data_tab4 = {
             'employee_name': '', 'employee_code': '', 'employee_email': '',
             'request_type': 'Select Type',
@@ -2860,14 +2948,17 @@ with tab4:
 
     col1, col2, col3 = st.columns([1, 1, 1], gap="large")
     with col1:
-        wfh_employee_name = st.text_input(
-            "Employee Name", value=st.session_state.form_data_tab4['employee_name'],
-            placeholder="Enter your full name", key="wfh_employee_name"
+        wfh_selected_emp_id = st.selectbox(
+            "Employee ID", EMPLOYEE_IDS, index=0,
+            help="Select your Employee ID. Your name fills in automatically.",
+            key="wfh_employee_code_select"
         )
+        wfh_employee_code = "" if wfh_selected_emp_id == EMPLOYEE_ID_PLACEHOLDER else wfh_selected_emp_id
     with col2:
-        wfh_employee_code = st.text_input(
-            "Employee Code", value=st.session_state.form_data_tab4['employee_code'],
-            placeholder="e.g., VF-EMP-001", key="wfh_employee_code"
+        wfh_employee_name = EMPLOYEES.get(wfh_employee_code, "")
+        st.text_input(
+            "Employee Name (auto-filled)", value=wfh_employee_name,
+            placeholder="Select Employee ID first", disabled=True
         )
     with col3:
         wfh_employee_email = st.text_input(
