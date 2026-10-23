@@ -559,11 +559,14 @@ SUPERIORS = {
     "Ayushi Jain": "ayushi@volarfashion.in",
     "Akshaya Shinde": "Akshaya@vfemails.com",
     "Vitika Mehta": "vitika@vfemails.com",
+    "Shantanu Shinde": "s37@vfemails.com",
     "Mohammed Tahir": "tahir@vfemails.com",
+    "Malaika Sathe":"Malaika@vfemails.com",
     "Hr": "hrvolarfashion@gmail.com",
     "Krishna Yadav": "Krishna@vfemails.com",
     "Manish Gupta": "Manish@vfemails.com",
-    "Shantanu Shinde": "s37@vfemails.com"
+    
+    
 }
 
 DEPARTMENTS = [
